@@ -20,7 +20,7 @@ void FillByteCode(FILE * fpout, FILE * fpin, const char * command)
     }
 
     else if(!strcmp(command, "in"))
-        fprintf(fpout, "7\n");
+        fprintf(fpout, "0\n");
 
     else if(!strcmp(command, "out"))
         fprintf(fpout, "4\n");

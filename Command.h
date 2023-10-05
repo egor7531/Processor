@@ -3,6 +3,6 @@
 
 #include "Stack.h"
 
-void MakeCommand(FILE * fp, const char * command, myStack * stk);
+void MakeCommand(FILE * fp, const int command, myStack * stk);
 
 #endif // COMMAND_H_INCLUDED

@@ -5,7 +5,7 @@
 #include "Stack.h"
 #include "Command.h"
 
-const char * nameFile = "ASM.txt";
+const char * nameFile = "ByteCode.txt";
 
 int main()
 {
@@ -21,9 +21,9 @@ int main()
 
     StackCtor(&stk);
 
-    char command[100] = {};
+    int command = 0;
 
-    while(fscanf(fp, "%s",  command) != EOF)
+    while(fscanf(fp, "%d", &command) != EOF)
         MakeCommand(fp, command, &stk);
 
     fclose(fp);

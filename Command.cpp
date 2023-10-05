@@ -120,36 +120,30 @@ void Sub(myStack * stk)
     StackPush(stk, value2 - value1);
 }
 
-void MakeCommand(FILE * fp, const char * command, myStack * stk)
+void MakeCommand(FILE * fp, const int command, myStack * stk)
 {
     assert(fp      != NULL);
-    assert(command != NULL);
     assert(stk     != NULL);
 
-    if(!strcmp(command, "push"))
-        Push(stk, fp);
-
-    else if(!strcmp(command, "in"))
-        In(stk);
-
-    else if(!strcmp(command, "out"))
-        Out(stk);
-
-    else if(!strcmp(command, "HLT"))
-        Hlt(stk);
-
-    else if(!strcmp(command, "div"))
-        Div(stk);
-
-    else if(!strcmp(command, "add"))
-        Add(stk);
-
-    else if(!strcmp(command, "mul"))
-        Mul(stk);
-
-    else if(!strcmp(command, "sub"))
-        Sub(stk);
-
-    else
-        printf("Unkown command\n");
+    switch(command)
+    {
+    case 0: In(stk);
+            break;
+    case 1: Push(stk, fp);
+            break;
+    case 4: Out(stk);
+            break;
+    case -1: Hlt(stk);
+            break;
+    case 2: Div(stk);
+            break;
+    case 5: Add(stk);
+            break;
+    case 6: Mul(stk);
+            break;
+    case 3: Sub(stk);
+            break;
+    default: printf("Unkown command\n");
+            break;
+    }
 }
