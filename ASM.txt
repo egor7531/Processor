@@ -1,0 +1,9 @@
+push 3000
+push 3
+div
+push 7000
+push 1000
+div
+sub
+out
+HLT
