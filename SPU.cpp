@@ -42,7 +42,7 @@ void Div(myProcessor * prc);
 void Out(myProcessor * prc);
 void In(myProcessor * prc);
 void Push(FILE * fp, myProcessor * prc);
-void Pop(myProcessor * prc);
+void Pop(FILE * fp, myProcessor * prc);
 void ProcessorCtor(myProcessor * prc);
 
 int main()
@@ -77,16 +77,64 @@ void Push(FILE * fp, myProcessor * prc)
 
     double value = 0;
 
-    fscanf(fp, "%lf", &value);
+    const int maxSizeReg = 5;
+    char strReg[maxSizeReg] = {};
 
-    StackPush(&prc->stk, value);
+    if(fscanf(fp, "%lf", &value))
+        StackPush(&prc->stk, value);
+
+    else if(fscanf(fp, "%s", strReg))
+    {
+        int numReg = strReg[1] -'a' + 1;
+
+        switch(numReg)
+        {
+            case 1: StackPush(&prc->stk, (&prc->reg)->rax);
+                    break;
+            case 2: StackPush(&prc->stk, (&prc->reg)->rbx);
+                    break;
+            case 3: StackPush(&prc->stk, (&prc->reg)->rcx);
+                    break;
+            case 4: StackPush(&prc->stk, (&prc->reg)->rdx);
+                    break;
+            default: printf("Unknown register: %d\n", numReg);
+                    break;
+        }
+    }
+
+    else
+        printf("Syntax error\n");
 }
 
-void Pop(myProcessor * prc)
+void Pop(FILE * fp, myProcessor * prc)
 {
+    assert(fp  != NULL);
     assert(prc != NULL);
 
+    double value = 0;
 
+    StackPop(&prc->stk, &value);
+
+    const int maxSizeReg = 5;
+    char strReg[maxSizeReg] = {};
+
+    fscanf(fp, "%s", strReg);
+
+    int numReg = strReg[1] -'a' + 1;
+
+    switch(numReg)
+    {
+        case 1: (&prc->reg)->rax = value;
+                break;
+        case 2: (&prc->reg)->rbx = value;
+                break;
+        case 3: (&prc->reg)->rcx = value;
+                break;
+        case 4: (&prc->reg)->rdx = value;
+                break;
+        default: printf("Unknown register: %d\n", numReg);
+                break;
+    }
 }
 
 void In(myProcessor * prc)
@@ -199,7 +247,7 @@ void ExecuteCommand(FILE * fp, const int command, myProcessor * prc)
             break;
     case SUB: Sub(prc);
             break;
-    case POP: Pop(prc);
+    case POP: Pop(fp, prc);
             break;
     default: printf("Unkown command\n");
             break;
@@ -210,10 +258,7 @@ void ProcessorCtor(myProcessor * prc)
 {
     assert(prc != NULL);
 
-    /*prc->reg->rax = 0;
-    prc->reg->rbx = 0;
-    prc->reg->rcx = 0;
-    prc->reg->rdx = 0;*/
+    prc->reg = {};
 
     StackCtor(&prc->stk);
 }

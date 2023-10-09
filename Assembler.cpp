@@ -18,9 +18,25 @@ void WriteByteCode(FILE * fpin)
         if(!strcmp(command, "push"))
         {
             double value = 0;
-            fscanf(fpin, "%lf", &value);
 
-            fprintf(fpout, "1 %.2lf\n", value);
+            const int maxSizeReg = 5;
+            char strReg[maxSizeReg] = {};
+
+            if(fscanf(fpin, "%lf", &value))
+                fprintf(fpout, "1 %.2lf\n", value);
+
+            else if(fscanf(fpin, "%s", strReg))
+                fprintf(fpout, "1 %s\n", strReg);
+        }
+
+        else if(!strcmp(command, "pop"))
+        {
+            const int maxSizeReg = 5;
+            char strReg[maxSizeReg] = {};
+
+            fscanf(fpin, "%s", strReg);
+
+            fprintf(fpout, "11 %s\n", strReg);
         }
 
         else if(!strcmp(command, "in"))
