@@ -4,9 +4,12 @@
 #include <string.h>
 #include <sys/stat.h>
 
+typedef int instruct_t;
+
 int GetFileSize(FILE * fp);
+int GetCountLine(char * buf, int fileSize);
 char * GetFileContent(FILE * fp, const int fileSize);
-void WriteByteCode(const char * buffer);
+void WriteByteCode(const char * buffer, const int nLine);
 
 int main()
 {
@@ -26,9 +29,9 @@ int main()
 
     fclose(fpin);
 
+    int nLine =  GetCountLine(buffer, fpinSize);
 
-
-    WriteByteCode(buffer);
+    WriteByteCode(buffer, nLine);
 
     return 0;
 }
@@ -47,7 +50,7 @@ char * GetFileContent(FILE * fp, const int fileSize)
     assert(fp != NULL);
     assert(fileSize > 0);
 
-    char * buf = (char *)cafferlloc(fileSize, sizeof(char));
+    char * buf = (char *)calloc(fileSize, sizeof(char));
 
     if(buf == NULL)
         printf("Pointer on buffer is NULL\n");
@@ -63,67 +66,143 @@ char * GetFileContent(FILE * fp, const int fileSize)
 
     return buf;
 }
-void WriteByteCode(const char * buffer)
+
+int GetCountLine(char * buf, int fileSize)
+{
+    assert(buf != NULL);
+    assert(fileSize > 0);
+
+    int nLine = 0;
+
+    for(size_t i = 0; i < fileSize; i++)
+    {
+        if(buf[i] == '\n')
+            nLine++;
+    }
+
+    return nLine;
+}
+
+void WriteByteCode(const char * buffer, const int nLine)
 {
     assert(buffer != NULL);
+    assert(nLine > 0);
 
     const char * nameFileOut = "ByteCode.bin";
-    const int maxSizeCommand = 10;
-
-    char command[maxSizeCommand] = {};
-
     FILE * fpout = fopen(nameFileOut, "wb");  //надо проверять на NULL?
 
-    while(fscanf(fpin, "%s",  command) != EOF)
+    if(fpout == NULL)
+        printf("Error work of File\n");
+
+    instruct_t * instructions = (instruct_t *)calloc(2 * nLine, sizeof(instruct_t));
+
+    if(instructions == nullptr)
+        printf("Pointer on instructions is NULL\n");
+
+    const int maxSizeCommand = 10;
+    char command[maxSizeCommand] = {};
+
+    int i = 0;
+
+    while(sscanf(buffer, "%s",  command) != EOF)
     {
+        printf("%s\n", command);
         if(!strcmp(command, "push"))
         {
-            double value = 0;
+            buffer += 5;
+
+            instructions[i++] = 1;
+
+            instruct_t value = 0;
 
             const int maxSizeReg = 5;
             char strReg[maxSizeReg] = {};
 
-            if(fscanf(fpin, "%lf", &value))
-                fprintf(fpout, "1 %.2lf\n", value);
+            if(sscanf(buffer, "%d", &value))
+            {
+                char str[5] = {};
+                buffer += strlen(itoa(value, str, 10)) + 2;
 
-            else if(fscanf(fpin, "%s", strReg))
-                fprintf(fpout, "1 %s\n", strReg);
+                instructions[i++] = value;
+            }
+
+            else if(sscanf(buffer, "%s", strReg))
+            {
+                buffer += strlen(strReg) + 2;
+
+                instructions[i++] = strReg[1] - 'a' + 1;
+            }
         }
 
         else if(!strcmp(command, "pop"))
         {
+            buffer += 4;
+
+            instructions[i++] = 11;
+
             const int maxSizeReg = 5;
             char strReg[maxSizeReg] = {};
 
-            fscanf(fpin, "%s", strReg);
+            sscanf(buffer, "%s", strReg);
 
-            fprintf(fpout, "11 %s\n", strReg);
+            instructions[i++] = strReg[1] - 'a' + 1;
+
+            buffer += strlen(strReg) + 2;
         }
 
         else if(!strcmp(command, "in"))
-            fprintf(fpout, "0\n");
+        {
+            buffer += 4;
 
+            instructions[i++] = 2;
+        }
         else if(!strcmp(command, "out"))
-            fprintf(fpout, "4\n");
+        {
+            buffer += 5;
+
+            instructions[i++] = 7;
+        }
 
         else if(!strcmp(command, "HLT"))
-            fprintf(fpout, "-1\n");
+        {
+            buffer += 5;
+
+            instructions[i++] = 12;
+        }
 
         else if(!strcmp(command, "div"))
-            fprintf(fpout, "2\n");
+        {
+            buffer += 5;
+
+            instructions[i++] = 3;
+        }
 
         else if(!strcmp(command, "add"))
-            fprintf(fpout, "5\n");
+        {
+            buffer += 5;
+
+            instructions[i++] = 5;
+        }
 
         else if(!strcmp(command, "mul"))
-            fprintf(fpout, "6\n");
+        {
+            buffer += 5;
+
+            instructions[i++] = 6;
+        }
 
         else if(!strcmp(command, "sub"))
-            fprintf(fpout, "3\n");
+        {
+            buffer += 5;
+
+            instructions[i++] = 4;
+        }
 
         else
             printf("Unkown command\n");
     }
+
+    fwrite(instructions,sizeof(instruct_t), i, fpout);
 
     fclose(fpout);
 }
