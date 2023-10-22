@@ -1,8 +1,9 @@
-#ifndef COMMAND_H_INCLUDED
-#define COMMAND_H_INCLUDED
-
-#include "Stack.h"
-
-void MakeCommand(FILE * fp, const int command, myStack * stk);
-
-#endif // COMMAND_H_INCLUDED
+DEF_CMD(PUSH, 1,  1)
+DEF_CMD(HLT,  12, 0)
+DEF_CMD(IN,   2,  0)
+DEF_CMD(DIV,  3,  0)
+DEF_CMD(SUB,  4,  0)
+DEF_CMD(OUT,  7,  0)
+DEF_CMD(ADD,  5,  0)
+DEF_CMD(MUL,  6,  0)
+DEF_CMD(POP,  11, 1)

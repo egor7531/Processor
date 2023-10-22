@@ -4,29 +4,52 @@
 #include <string.h>
 #include <sys/stat.h>
 
-typedef int instruct_t;
-
 const int IMM = 1 << 4;
 const int REG = 1 << 5;
 //const uint8_t OSY = 1 << 6;
 
+#define DEF_CMD(name, num, args)    \
+    name = num,                     \
+
 enum opcode_t
 {
-    HLT = 12,
-    IN  =  2,
-    PUSH = 1,
-    DIV =  3,
-    SUB =  4,
-    OUT =  7,
-    ADD =  5,
-    MUL =  6,
-    POP = 11
+    #include "Command.h"
 };
+
+#undef DEF_CMD
 
 int GetFileSize(FILE * fp);
 int GetCountLine(char * buf, int fileSize);
 char * GetFileContent(FILE * fp, const int fileSize);
 void WriteByteCode(const char * buffer, const int nLine);
+
+
+#define DEF_CMD(name, num, args)                                            \
+    if(!strcmp(command, #name))                                             \
+    {                                                                       \
+        if(args)                                                            \
+        {                                                                   \
+            int value = 0;                                                  \
+            const int maxSizeReg = 5;                                       \
+            char strReg[maxSizeReg] = {};                                   \
+            if(sscanf(buffer + 1, "%d", &value))                            \
+            {                                                               \
+                instructions[countObject++] = num | IMM;                    \
+                char str[5] = {};                                           \
+                buffer += strlen(itoa(value, str, 10)) + 1;                 \
+                instructions[countObject++] = value;                        \
+            }                                                               \
+            else if(sscanf(buffer + 1, "%s", strReg))                       \
+            {                                                               \
+                instructions[countObject++] = num | REG;                    \
+                buffer += strlen(strReg) + 1;                               \
+                instructions[countObject++] = strReg[1] - 'a' + 1;          \
+            }                                                               \
+        }                                                                   \
+        else                                                                \
+            instructions[countObject++] = num;                              \
+    }                                                                       \
+
 
 int main()
 {
@@ -113,7 +136,7 @@ void WriteByteCode(const char * buffer, const int nLine)
     if(fpout == NULL)
         printf("Error work of File\n");
 
-    instruct_t * instructions = (instruct_t *)calloc(2 * nLine, sizeof(instruct_t));
+    int * instructions = (int *)calloc(2 * nLine, sizeof(int));
 
     if(instructions == NULL)
         printf("Pointer on instructions is NULL\n");
@@ -127,73 +150,12 @@ void WriteByteCode(const char * buffer, const int nLine)
     {
         buffer += strlen(command);
 
-        if(!strcmp(command, "push"))
-        {
-            instruct_t value = 0;
+        #include "Command.h"
+        #undef DEF_CMD
 
-            const int maxSizeReg = 5;
-            char strReg[maxSizeReg] = {};
-
-            if(sscanf(buffer + 1, "%d", &value))
-            {
-                instructions[countObject++] = PUSH | IMM;
-
-                char str[5] = {};
-                buffer += strlen(itoa(value, str, 10)) + 1;
-
-                instructions[countObject++] = value;
-            }
-
-            else if(sscanf(buffer + 1, "%s", strReg))
-            {
-                instructions[countObject++] = PUSH | REG;
-
-                buffer += strlen(strReg) + 1;
-
-                instructions[countObject++] = strReg[1] - 'a' + 1;
-            }
-        }
-
-        else if(!strcmp(command, "pop"))
-        {
-            instructions[countObject++] = POP | REG;
-
-            const int maxSizeReg = 5;
-            char strReg[maxSizeReg] = {};
-
-            sscanf(buffer + 1, "%s", strReg);
-
-            instructions[countObject++] = strReg[1] - 'a' + 1;
-
-            buffer += strlen(strReg) + 1;
-        }
-
-        else if(!strcmp(command, "in"))
-            instructions[countObject++] = IN;
-
-        else if(!strcmp(command, "out"))
-            instructions[countObject++] = OUT;
-
-        else if(!strcmp(command, "HLT"))
-            instructions[countObject++] = HLT;
-
-        else if(!strcmp(command, "div"))
-            instructions[countObject++] = DIV;
-
-        else if(!strcmp(command, "add"))
-            instructions[countObject++] = ADD;
-
-        else if(!strcmp(command, "mul"))
-            instructions[countObject++] = MUL;
-
-        else if(!strcmp(command, "sub"))
-            instructions[countObject++] = SUB;
-
-        else
-            printf("Unkown command\n");
     }
 
-    fwrite(instructions, sizeof(instruct_t), countObject, fpout);
+    fwrite(instructions, sizeof(int), countObject, fpout);
 
     free(instructions);
     fclose(fpout);
