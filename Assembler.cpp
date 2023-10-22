@@ -6,6 +6,23 @@
 
 typedef int instruct_t;
 
+const int IMM = 1 << 4;
+const int REG = 1 << 5;
+//const uint8_t OSY = 1 << 6;
+
+enum opcode_t
+{
+    HLT = 12,
+    IN  =  2,
+    PUSH = 1,
+    DIV =  3,
+    SUB =  4,
+    OUT =  7,
+    ADD =  5,
+    MUL =  6,
+    POP = 11
+};
+
 int GetFileSize(FILE * fp);
 int GetCountLine(char * buf, int fileSize);
 char * GetFileContent(FILE * fp, const int fileSize);
@@ -32,6 +49,8 @@ int main()
     int nLine =  GetCountLine(buffer, fpinSize);
 
     WriteByteCode(buffer, nLine);
+
+    free(buffer);
 
     return 0;
 }
@@ -96,113 +115,86 @@ void WriteByteCode(const char * buffer, const int nLine)
 
     instruct_t * instructions = (instruct_t *)calloc(2 * nLine, sizeof(instruct_t));
 
-    if(instructions == nullptr)
+    if(instructions == NULL)
         printf("Pointer on instructions is NULL\n");
 
     const int maxSizeCommand = 10;
     char command[maxSizeCommand] = {};
 
-    int i = 0;
+    int countObject = 0;
 
-    while(sscanf(buffer, "%s",  command) != EOF)
+    for( ; sscanf(buffer, "%s",  command) != EOF; buffer += 2)
     {
-        printf("%s\n", command);
+        buffer += strlen(command);
+
         if(!strcmp(command, "push"))
         {
-            buffer += 5;
-
-            instructions[i++] = 1;
-
             instruct_t value = 0;
 
             const int maxSizeReg = 5;
             char strReg[maxSizeReg] = {};
 
-            if(sscanf(buffer, "%d", &value))
+            if(sscanf(buffer + 1, "%d", &value))
             {
-                char str[5] = {};
-                buffer += strlen(itoa(value, str, 10)) + 2;
+                instructions[countObject++] = PUSH | IMM;
 
-                instructions[i++] = value;
+                char str[5] = {};
+                buffer += strlen(itoa(value, str, 10)) + 1;
+
+                instructions[countObject++] = value;
             }
 
-            else if(sscanf(buffer, "%s", strReg))
+            else if(sscanf(buffer + 1, "%s", strReg))
             {
-                buffer += strlen(strReg) + 2;
+                instructions[countObject++] = PUSH | REG;
 
-                instructions[i++] = strReg[1] - 'a' + 1;
+                buffer += strlen(strReg) + 1;
+
+                instructions[countObject++] = strReg[1] - 'a' + 1;
             }
         }
 
         else if(!strcmp(command, "pop"))
         {
-            buffer += 4;
-
-            instructions[i++] = 11;
+            instructions[countObject++] = POP | REG;
 
             const int maxSizeReg = 5;
             char strReg[maxSizeReg] = {};
 
-            sscanf(buffer, "%s", strReg);
+            sscanf(buffer + 1, "%s", strReg);
 
-            instructions[i++] = strReg[1] - 'a' + 1;
+            instructions[countObject++] = strReg[1] - 'a' + 1;
 
-            buffer += strlen(strReg) + 2;
+            buffer += strlen(strReg) + 1;
         }
 
         else if(!strcmp(command, "in"))
-        {
-            buffer += 4;
+            instructions[countObject++] = IN;
 
-            instructions[i++] = 2;
-        }
         else if(!strcmp(command, "out"))
-        {
-            buffer += 5;
-
-            instructions[i++] = 7;
-        }
+            instructions[countObject++] = OUT;
 
         else if(!strcmp(command, "HLT"))
-        {
-            buffer += 5;
-
-            instructions[i++] = 12;
-        }
+            instructions[countObject++] = HLT;
 
         else if(!strcmp(command, "div"))
-        {
-            buffer += 5;
-
-            instructions[i++] = 3;
-        }
+            instructions[countObject++] = DIV;
 
         else if(!strcmp(command, "add"))
-        {
-            buffer += 5;
-
-            instructions[i++] = 5;
-        }
+            instructions[countObject++] = ADD;
 
         else if(!strcmp(command, "mul"))
-        {
-            buffer += 5;
-
-            instructions[i++] = 6;
-        }
+            instructions[countObject++] = MUL;
 
         else if(!strcmp(command, "sub"))
-        {
-            buffer += 5;
-
-            instructions[i++] = 4;
-        }
+            instructions[countObject++] = SUB;
 
         else
             printf("Unkown command\n");
     }
 
-    fwrite(instructions,sizeof(instruct_t), i, fpout);
+    fwrite(instructions, sizeof(instruct_t), countObject, fpout);
 
+    free(instructions);
     fclose(fpout);
 }
