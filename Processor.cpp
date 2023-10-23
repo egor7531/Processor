@@ -20,18 +20,15 @@ const int IMM = 1 << 4;
 const int REG = 1 << 5;
 //const uint8_t OSY = 1 << 6;
 
+#define DEF_CMD(name, num, args, code)    \
+    name = num,                           \
+
 enum opcode_t
 {
-    HLT = 12,
-    IN  =  2,
-    PUSH = 1,
-    DIV =  3,
-    SUB =  4,
-    OUT =  7,
-    ADD =  5,
-    MUL =  6,
-    POP = 11
+    #include "Command.h"
 };
+
+#undef DEF_CMD
 
 int GetFileSize(FILE * fp);
 void WriteInstuction(myProcessor * prc);
@@ -40,14 +37,8 @@ void ProcessorDtor(myProcessor * prc);
 void ProcessorDump(myProcessor * prc);
 void GetResult(myProcessor * prc);
 void ExecuteCommand(myProcessor * prc, const int command);
-void Sub(myProcessor * prc);
-void Mul(myProcessor * prc);
-void Add(myProcessor * prc);
-void Div(myProcessor * prc);
-void Out(myProcessor * prc);
-void In(myProcessor * prc);
-void Push(myProcessor * prc, const int command);
-void Pop(myProcessor * prc);
+
+//#define PUSH(arg) StackPush(&prc->stk, value);
 
 int main()
 {
@@ -60,117 +51,6 @@ int main()
     ProcessorDtor(&prc);
 
     return 0;
-}
-
-void Push(myProcessor * prc, const int command)
-{
-    assert(prc != NULL);
-    assert(command > 0);
-
-    prc->instruct++;
-
-    if(command & IMM)
-        StackPush(&prc->stk, *(prc->instruct ));
-
-    else if(command & REG)
-        StackPush(&prc->stk, prc->registers[*(prc->instruct) - 1]);
-
-    else
-        printf("Syntax error\n");
-}
-
-void Pop(myProcessor * prc)
-{
-    assert(prc != NULL);
-
-    int value = 0;
-
-    StackPop(&prc->stk, &value);
-
-    prc->instruct++;
-
-    prc->registers[*(prc->instruct) - 1] = value;
-}
-
-void In(myProcessor * prc)
-{
-    assert(prc != NULL);
-
-    int value = 0;
-
-    printf("Enter number: ");
-    scanf("%d", &value);
-
-    StackPush(&prc->stk, value);
-}
-
-void Out(myProcessor * prc)
-{
-    assert(prc != NULL);
-
-    const char * nameFile = "Result.txt";
-
-    FILE * fp = fopen(nameFile, "wb"); //Нужно делать проферку файла, если мы в него записываем, а не читаем?
-
-    int value = 0;
-
-    StackPop(&prc->stk, &value);
-
-    fprintf(fp, "%d", value);
-
-    fclose(fp);
-}
-
-void Div(myProcessor * prc)
-{
-    assert(prc != NULL);
-
-    int value1 = 0;
-    int value2 = 0;
-
-    StackPop(&prc->stk, &value1);
-    StackPop(&prc->stk, &value2);
-
-    StackPush(&prc->stk, value2 / value1);
-}
-
-void Add(myProcessor * prc)
-{
-    assert(prc != NULL);
-
-    int value1 = 0;
-    int value2 = 0;
-
-    StackPop(&prc->stk, &value1);
-    StackPop(&prc->stk, &value2);
-
-    StackPush(&prc->stk, value2 + value1);
-}
-
-void Mul(myProcessor * prc)
-{
-    assert(prc != NULL);
-
-    int value1 = 0;
-    int value2 = 0;
-
-    StackPop(&prc->stk, &value1);
-    StackPop(&prc->stk, &value2);
-
-    StackPush(&prc->stk, value2 * value1);
-}
-
-void Sub(myProcessor * prc)
-{
-    assert(prc != NULL);
-
-    int value1 = 0;
-    int value2 = 0;
-
-    StackPop(&prc->stk, &value1);
-    StackPop(&prc->stk, &value2);
-
-    StackPush(&prc->stk, value2 - value1);
 }
 
 void GetResult(myProcessor * prc)
@@ -186,24 +66,13 @@ void ExecuteCommand(myProcessor * prc, const int command)
 
     switch(command & CHECKCODE)
     {
-    case IN: In(prc);
-            break;
-    case PUSH: Push(prc, command);
-            break;
-    case OUT: Out(prc);
-            break;
-    case DIV: Div(prc);
-            break;
-    case ADD: Add(prc);
-            break;
-    case MUL: Mul(prc);
-            break;
-    case SUB: Sub(prc);
-            break;
-    case POP: Pop(prc);
-            break;
-    default: printf("Unkown command\n");
-            break;
+        #define DEF_CMD(name, num, args, code)      \
+            case num:                               \
+                code;                               \
+                break;                              \
+
+        #include "Command.h"
+        #undef DEF_CMD
     }
 }
 
@@ -219,7 +88,6 @@ int GetFileSize(FILE * fp)
 void WriteInstuction(myProcessor * prc)
 {
     const char * nameFile = "ByteCode.bin";
-
     FILE *fp = fopen(nameFile, "rb");
 
     if(fp == NULL)
@@ -240,9 +108,6 @@ void WriteInstuction(myProcessor * prc)
         else
             printf("File read error\n");
     }
-
-    //for(int i = 0; i < countObject; i++)
-    //    printf("%d\n", prc->instruct[i]);
 
     fclose(fp);
 }
