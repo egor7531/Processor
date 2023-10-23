@@ -14,14 +14,24 @@ struct myProcessor
     myStack stk;
 };
 
-const int CHECKCODE = 15;
-const int countRegisters = 10;
+const int CHECK_CODE  = 0x1111;
 const int IMM = 1 << 4;
 const int REG = 1 << 5;
+
+static_assert( !(IMM & REG),         "IMM and REG overlap");
+static_assert( !(IMM & CHECK_CODE ), "IMM and CHECK_CODE  overlap");
+static_assert( !(REG & CHECK_CODE ), "REG and CHECK_CODE  overlap");
+
 //const uint8_t OSY = 1 << 6;
 
 #define DEF_CMD(name, num, args, code)    \
     name = num,                           \
+
+#define DEF_PUSH(arg) StackPush(&prc->stk, arg)
+#define DEF_POP(arg) StackPop(&prc->stk, &arg)
+#define DEF_ARG *(++prc->instruct)
+#define DEF_COMMAND *prc->instruct
+#define DEF_REG(arg) prc->registers[arg]
 
 enum opcode_t
 {
@@ -37,8 +47,6 @@ void ProcessorDtor(myProcessor * prc);
 void ProcessorDump(myProcessor * prc);
 void GetResult(myProcessor * prc);
 void ExecuteCommand(myProcessor * prc, const int command);
-
-//#define PUSH(arg) StackPush(&prc->stk, value);
 
 int main()
 {
@@ -56,23 +64,24 @@ int main()
 void GetResult(myProcessor * prc)
 {
     for( ; *prc->instruct != HLT; prc->instruct++)
-        ExecuteCommand(prc, *prc->instruct);
- }
-
-void ExecuteCommand(myProcessor * prc, const int command)
-{
-    assert(prc != NULL);
-    assert(command > 0);
-
-    switch(command & CHECKCODE)
     {
-        #define DEF_CMD(name, num, args, code)      \
-            case num:                               \
-                code;                               \
-                break;                              \
+        switch(*prc->instruct & CHECK_CODE)
+        {
+            #define DEF_CMD(name, num, args, code)      \
+                case num:                               \
+                    code;                               \
+                    break;                              \
 
-        #include "Command.h"
-        #undef DEF_CMD
+            #include "Command.h"
+
+            #undef DEF_CMD
+
+            #undef DEF_PUSH
+            #undef DEF_POP
+            #undef DEF_COMMAND
+            #undef DEF_ARG
+            #undef DEF_REG
+        }
     }
 }
 
@@ -116,7 +125,7 @@ void ProcessorCtor(myProcessor * prc)
 {
     assert(prc != NULL);
 
-    prc->registers = (int *)calloc(countRegisters, sizeof(int));
+    prc->registers = (int *)calloc(REGISTERS_COUNT, sizeof(int));
 
     if(prc->registers == NULL)
         printf("Pointer in registers in NULL\n");
@@ -149,8 +158,8 @@ void ProcessorDump(myProcessor * prc)
 
     assert(prc->registers != NULL);
 
-    for(int i = 0; i < countRegisters; i++)
-        printf("%d ",  prc->registers[i]);
+    //for(int i = 0; i < REGISTERS_COUNT; i++)
+    //    printf("%d ",  prc->registers[i]);
 
     printf("\n");
 }
