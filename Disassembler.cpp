@@ -2,70 +2,40 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/stat.h>
 
-const int CHECK_CODE = 0b1111;
-const int IMM = 1 << 4;
-const int REG = 1 << 5;
+#include "Commons.h"
+#include "File.h"
 
-static_assert( !(IMM & REG),         "IMM and REG overlap");
-static_assert( !(IMM & CHECK_CODE ), "IMM and CHECK_CODE  overlap");
-static_assert( !(REG & CHECK_CODE ), "REG and CHECK_CODE  overlap");
-
-const char *regs_name[] = { "rax",
-                            "rbx",
-                            "rcx",
-                            "rdx",
-                            "rsi",
-                            "rdi",
-                            "rbp",
-                            "rsp",
-                            "r08",
-                            "r09",
-                            "r10",
-                            "r11",
-                            "r12",
-                            "r13",
-                            "r14",
-                            "r15"};
-
-const int REGISTERS_COUNT = sizeof(regs_name) / sizeof(regs_name[0]);
-
-int GetFileSize(FILE * fp);
-int * GetFileContent(int * sizeInstruct);
-void FillASM(int * instruct, int sizeInstruct);
+int * WriteInstuction(FILE * fp, int * sizeInstruct);
+void FillDASM(const int * instruct, const int sizeInstruct);
 
 int main()
 {
-    int sizeInstruct = 0;
-
-    int * instruct = GetFileContent(&sizeInstruct);
-
-    FillASM(instruct, sizeInstruct);
-
-    return 0;
-}
-
-int GetFileSize(FILE * fp)
-{
-    struct stat st;
-
-    fstat(fileno(fp), &st);
-
-    return st.st_size;
-}
-
-int * GetFileContent(int * sizeInstruct)
-{
-    const char * nameFile = "ByteCode.bin";
+    const char * nameFile = "Bytecode.bin";
     FILE *fp = fopen(nameFile, "rb");
 
     if(fp == NULL)
         printf("Can't open file\n");
 
+    int sizeInstruct = 0;
+
+    int * instruct = WriteInstuction(fp, &sizeInstruct);
+
+    FillDASM(instruct, sizeInstruct);
+
+    free(instruct);
+
+    return 0;
+}
+
+int * WriteInstuction(FILE * fp, int * sizeInstruct)
+{
+    assert(fp != NULL);
+
+    int fileSize = GetFileSize(fp);
     *sizeInstruct = GetFileSize(fp) / sizeof(int);
 
-    int * instruct = (int *)calloc(GetFileSize(fp), sizeof(char));
+    int * instruct = (int *)calloc(*sizeInstruct, sizeof(int));
 
     if(instruct == NULL)
         printf("Pointer on instructions is NULL\n");
@@ -79,19 +49,17 @@ int * GetFileContent(int * sizeInstruct)
             printf("File read error\n");
     }
 
-    //for(int i = 0; i < countObject; i++)
-    //    printf("%d\n", instruct[i]);
     fclose(fp);
 
     return instruct;
 }
 
-void FillASM(int * instruct, int sizeInstruct)
+void FillDASM(const int * instruct,const int sizeInstruct)
 {
     assert(instruct != NULL);
     assert(sizeInstruct > 0);
 
-    const char * nameFile = "ASMcopy.txt";
+    const char * nameFile = "DASM.txt";
     FILE * fp = fopen(nameFile, "wb");
 
     if(fp == NULL)
@@ -99,7 +67,7 @@ void FillASM(int * instruct, int sizeInstruct)
 
     for(int i = 0; i < sizeInstruct; i++)
     {
-        switch(instruct[i] & CHECK_CODE)
+        switch(instruct[i] & CMD)
         {
             #define DEF_CMD(name, num, args, code)                              \
                 case num:                                                       \
@@ -111,7 +79,7 @@ void FillASM(int * instruct, int sizeInstruct)
                             fprintf(fp, " %d", instruct[++i]);                  \
                                                                                 \
                         else if(instruct[i] & REG)                              \
-                            fprintf(fp, " %s", regs_name[instruct[++i] - 1]);   \
+                            fprintf(fp, " %s", REGS_NAME[instruct[++i] - 1]);   \
                     }                                                           \
                                                                                 \
                     fprintf(fp, "\n");                                          \
