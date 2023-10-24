@@ -1,13 +1,17 @@
 #ifndef COMMONS_H_INCLUDED
 #define COMMONS_H_INCLUDED
 
-const int CMD = 0b1111;
-const int IMM = 1 << 4;
-const int REG = 1 << 5;
+const int CMD = 0b11111;
+const int IMM = 1 << 5;
+const int REG = 1 << 6;
+const int LAB = 1 << 7;
 
-static_assert( !(IMM & REG),  "IMM and REG overlap");
-static_assert( !(IMM & CMD ), "IMM and CMD  overlap");
-static_assert( !(REG & CMD ), "REG and CMD  overlap");
+static_assert( !(IMM & REG), "IMM and REG overlap");
+static_assert( !(IMM & CMD), "IMM and CMD overlap");
+static_assert( !(REG & CMD), "REG and CMD overlap");
+static_assert( !(LAB & CMD), "LAB and CMD overlap");
+static_assert( !(REG & LAB), "REG and LAB overlap");
+static_assert( !(LAB & IMM), "LAB and IMM overlap");
 
 const char *REGS_NAME[] =
 {

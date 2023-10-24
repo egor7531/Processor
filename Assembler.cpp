@@ -6,12 +6,24 @@
 #include "Commons.h"
 #include "File.h"
 
-int GetNumReg(const char *);
-void WriteBytecode(const char * buffer, const int nLine);                                                                   \
+const int labelLenght = 10;
+
+struct label
+{
+    int lbsAdress;
+    char lbsName[labelLenght];
+};
+
+int GetNumReg(const char * strReg);
+bool IsLabel(const char * command);
+int GetAdressLabel(const label * lbs, const int MAX_LABEL_COUNT, const char * strArg);
+void WriteBytecode(const int * instruct, const int sizeInstruct);
+int * GetInstuction(const char * buf, const int nLine, int * sizeInstruct);                                                                \
+label * GetLabels(const char * buf);
 
 int main()
 {
-    const char * nameFile  = "ASM.txt";
+    const char * nameFile  = "ASM1.txt";
     FILE * fp = fopen(nameFile, "rb");
 
     if(fp == NULL)
@@ -26,72 +38,18 @@ int main()
     fclose(fp);
 
     int nLine =  GetCountLine(buf, fileSize);
-    WriteBytecode(buf, nLine);
 
-    free(buf);
-
-    return 0;
-}
-
-void WriteBytecode(const char * buf, const int nLine)
-{
-    assert(buf != NULL);
-    assert(nLine > 0);
-
-    const char * nameFile = "Bytecode.bin";
-    FILE * fp = fopen(nameFile, "wb");
-
-    if(fp == NULL)
-        printf("Error work of File\n");
-
-    int * instruct = (int *)calloc(2 * nLine, sizeof(int));
-
-    if(instruct == NULL)
-        printf("Pointer on instructions is NULL\n");
-
-    const int maxSizeCommand = 10;
-    char command[maxSizeCommand] = {};
+    label * lbs = GetLabels(buf);
 
     int sizeInstruct = 0;
+    int * instruct = GetInstuction(buf, nLine, &sizeInstruct);
 
-    for(int i = 0; sscanf(buf + i, "%s",  command) != EOF; i += 2)
-    {
-        i += strlen(command);
+    WriteBytecode(instruct, sizeInstruct);
 
-        #define DEF_CMD(name, num, args, code)                                      \
-            if(!strcmp(command, #name))                                             \
-            {                                                                       \
-                if(args)                                                            \
-                {                                                                   \
-                    int value = 0;                                                  \
-                    const int maxSizeReg = 5;                                       \
-                    char strReg[maxSizeReg] = {};                                   \
-                    if(sscanf(buf + i + 1, "%d", &value))                           \
-                    {                                                               \
-                        instruct[sizeInstruct++] = num | IMM;                       \
-                        char str[5] = {};                                           \
-                        i += strlen(itoa(value, str, 10)) + 1;                      \
-                        instruct[sizeInstruct++] = value;                           \
-                    }                                                               \
-                    else if(sscanf(buf + i + 1, "%s", strReg))                      \
-                    {                                                               \
-                        instruct[sizeInstruct++] = num | REG;                       \
-                        i += strlen(strReg) + 1;                                    \
-                        instruct[sizeInstruct++] = GetNumReg(strReg);               \
-                    }                                                               \
-                }                                                                   \
-                else                                                                \
-                    instruct[sizeInstruct++] = num;                                 \
-            }                                                                       \
-
-        #include "Command.h"
-        #undef DEF_CMD
-    }
-
-    fwrite(instruct, sizeof(int), sizeInstruct, fp);
-
+    free(buf);
     free(instruct);
-    fclose(fp);
+
+    return 0;
 }
 
 int GetNumReg(const char * strReg)
@@ -101,4 +59,122 @@ int GetNumReg(const char * strReg)
         if(!strcmp(strReg, REGS_NAME[i]))
             return i + 1;
     }
+}
+
+int GetAdressLabel(const label * lbs, const int MAX_LABEL_COUNT, const char * strArg)
+{
+    for(int i = 0; i < MAX_LABEL_COUNT; i++)
+    {
+        if(!strcmp(lbs[i].lbsName, strArg))
+            return lbs[i].lbsAdress;
+    }
+}
+
+bool IsLabel(const char * command)
+{
+    assert(command != NULL);
+
+    return command[0] == ':';
+}
+
+label * GetLabels(const char * buf)
+{
+    const int MAX_LABEL_COUNT = 10;
+    label * lbs = (label *)calloc(MAX_LABEL_COUNT, sizeof(label));
+
+    for(int i = 0; sscanf(buf + i, "%s",  command) != EOF; i += 2)
+    {
+        printf("%s\n", command);
+    }
+}
+
+int * GetInstuction(const char * buf, const int nLine, int * sizeInstruct)
+{
+    assert(buf != NULL);
+    assert(nLine > 0);
+    assert(sizeInstruct != NULL);
+
+    int * instruct = (int *)calloc(2 * nLine, sizeof(int));
+
+    if(instruct == NULL)
+        printf("Pointer on instructions is NULL\n");
+
+    int LABEL_COUNT = 0;
+
+    const int maxSizeCommand = 10;
+    char command[maxSizeCommand] = {};
+
+    int sizeInstruc = 0;
+
+    for(int i = 0; sscanf(buf + i, "%s",  command) != EOF; i += 2)
+    {
+        i += strlen(command);
+        #define DEF_CMD(name, num, args, code)                                              \
+            if(!strcmp(command, #name))                                                     \
+            {                                                                               \
+                if(args)                                                                    \
+                {                                                                           \
+                    int valueArg = 0;                                                       \
+                    const int maxSizeStrArg = 10;                                           \
+                    char strArg[maxSizeStrArg] = {};                                        \
+                                                                                            \
+                    if(sscanf(buf + i + 1, "%d", &valueArg))                                \
+                    {                                                                       \
+                        instruct[(*sizeInstruct)++] = num | IMM;                            \
+                                                                                            \
+                        char str[5] = {};                                                   \
+                        i += strlen(itoa(valueArg, str, 10)) + 1;                           \
+                                                                                            \
+                        instruct[(*sizeInstruct)++] = valueArg;                             \
+                    }                                                                       \
+                                                                                            \
+                    else if(sscanf(buf + i + 1, "%s", strArg))                              \
+                    {                                                                       \
+                        if(IsLabel(strArg))                                                 \
+                        {                                                                   \
+                            instruct[(*sizeInstruct)++] = num | LAB;                        \
+                            instruct[(*sizeInstruct)++] = GetAdressLabel(                   \
+                                                            lbs, MAX_LABEL_COUNT, strArg);  \
+                        }                                                                   \
+                                                                                            \
+                        else                                                                \
+                        {                                                                   \
+                            instruct[(*sizeInstruct)++] = num | REG;                        \
+                            instruct[(*sizeInstruct)++] = GetNumReg(strArg);                \
+                        }                                                                   \
+                                                                                            \
+                        i += strlen(strArg) + 1;                                            \
+                                                                                            \
+                    }                                                                       \
+                }                                                                           \
+                                                                                            \
+                else                                                                        \
+                    instruct[(*sizeInstruct)++] = num;                                      \
+            }                                                                               \
+
+            if(IsLabel(command))
+            {
+                strcpy(lbs[LABEL_COUNT].lbsName, command);
+                lbs[LABEL_COUNT].lbsAdress = *sizeInstruct;
+                LABEL_COUNT++;
+            }
+
+        #include "Command.h"
+        #undef DEF_CMD
+    }
+
+    return instruct;
+}
+
+void WriteBytecode(const int * instruct, const int sizeInstruct)
+{
+    const char * nameFile = "Bytecode.bin";
+    FILE * fp = fopen(nameFile, "wb");
+
+    if(fp == NULL)
+        printf("Error work of File\n");
+
+    fwrite(instruct, sizeof(int), sizeInstruct, fp);
+
+    fclose(fp);
 }
