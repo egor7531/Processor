@@ -16,14 +16,15 @@ struct label
 
 int GetNumReg(const char * strReg);
 bool IsLabel(const char * command);
-int GetAdressLabel(const label * lbs, const int MAX_LABEL_COUNT, const char * strArg);
+int GetAdressLabel(const label * lbs, const int lableCount, const char * strArg);
 void WriteBytecode(const int * instruct, const int sizeInstruct);
-int * GetInstuction(const char * buf, const int nLine, int * sizeInstruct);                                                                \
-label * GetLabels(const char * buf);
+int * GetInstuction(const char * buf, const int nLine, int * sizeInstruct,
+                                                     const label * lbs, const int lableCount);                                                                \
+label * GetLabels(const char * buf, int * lableCount);
 
 int main()
 {
-    const char * nameFile  = "ASM1.txt";
+    const char * nameFile  = "ASM2.txt";
     FILE * fp = fopen(nameFile, "rb");
 
     if(fp == NULL)
@@ -39,21 +40,25 @@ int main()
 
     int nLine =  GetCountLine(buf, fileSize);
 
-    label * lbs = GetLabels(buf);
+    int lableCount = 0;
+    label * lbs = GetLabels(buf, &lableCount);
 
     int sizeInstruct = 0;
-    int * instruct = GetInstuction(buf, nLine, &sizeInstruct);
+    int * instruct = GetInstuction(buf, nLine, &sizeInstruct, lbs, lableCount);
 
     WriteBytecode(instruct, sizeInstruct);
 
     free(buf);
     free(instruct);
+    free(lbs);
 
     return 0;
 }
 
 int GetNumReg(const char * strReg)
 {
+    assert(strReg != NULL);
+
     for(int i = 0; i < REGISTERS_COUNT; i++)
     {
         if(!strcmp(strReg, REGS_NAME[i]))
@@ -61,9 +66,13 @@ int GetNumReg(const char * strReg)
     }
 }
 
-int GetAdressLabel(const label * lbs, const int MAX_LABEL_COUNT, const char * strArg)
+int GetAdressLabel(const label * lbs, const int lableCount, const char * strArg)
 {
-    for(int i = 0; i < MAX_LABEL_COUNT; i++)
+    assert(lbs    != NULL);
+    assert(strArg != NULL);
+    assert(lableCount > 0);
+
+    for(int i = 0; i < lableCount; i++)
     {
         if(!strcmp(lbs[i].lbsName, strArg))
             return lbs[i].lbsAdress;
@@ -77,29 +86,70 @@ bool IsLabel(const char * command)
     return command[0] == ':';
 }
 
-label * GetLabels(const char * buf)
+label * GetLabels(const char * buf, int * lableCount)
 {
+    assert(buf        != NULL);
+    assert(lableCount != NULL);
+
     const int MAX_LABEL_COUNT = 10;
     label * lbs = (label *)calloc(MAX_LABEL_COUNT, sizeof(label));
 
+    const int maxSizeCommand = 10;
+    char command[maxSizeCommand] = {};
+
+    int countInstruct = 0;
+
     for(int i = 0; sscanf(buf + i, "%s",  command) != EOF; i += 2)
     {
-        printf("%s\n", command);
+        if(IsLabel(command))
+        {
+            strcpy(lbs[*lableCount].lbsName, command);
+            lbs[*lableCount].lbsAdress = countInstruct;
+            (*lableCount)++;
+        }
+
+        #define DEF_CMD(name, num, args, code)                                              \
+            if(!strcmp(command, #name))                                                     \
+            {                                                                               \
+                countInstruct++;                                                            \
+                if(args)                                                                    \
+                {                                                                           \
+                    countInstruct++;                                                        \
+                    int valueArg = 0;                                                       \
+                    const int maxSizeStrArg = 10;                                           \
+                    char strArg[maxSizeStrArg] = {};                                        \
+                                                                                            \
+                    if(sscanf(buf + i + 1, "%d", &valueArg))                                \
+                    {                                                                       \
+                        char str[5] = {};                                                   \
+                        i += strlen(itoa(valueArg, str, 10)) + 1;                           \
+                    }                                                                       \
+                                                                                            \
+                    else if(sscanf(buf + i + 1, "%s", strArg))                              \
+                        i += strlen(strArg) + 1;                                            \
+                }                                                                           \
+            }                                                                               \
+
+        #include "Command.h"
+        #undef DEF_CMD
     }
+
+    return lbs;
 }
 
-int * GetInstuction(const char * buf, const int nLine, int * sizeInstruct)
+int * GetInstuction(const char * buf, const int nLine, int * sizeInstruct,
+                                                     const label * lbs, const int lableCount)
 {
-    assert(buf != NULL);
-    assert(nLine > 0);
+    assert(buf          != NULL);
+    assert(lbs          != NULL);
     assert(sizeInstruct != NULL);
+    assert(nLine      >  0);
+    assert(lableCount >= 0);
 
     int * instruct = (int *)calloc(2 * nLine, sizeof(int));
 
     if(instruct == NULL)
         printf("Pointer on instructions is NULL\n");
-
-    int LABEL_COUNT = 0;
 
     const int maxSizeCommand = 10;
     char command[maxSizeCommand] = {};
@@ -134,7 +184,7 @@ int * GetInstuction(const char * buf, const int nLine, int * sizeInstruct)
                         {                                                                   \
                             instruct[(*sizeInstruct)++] = num | LAB;                        \
                             instruct[(*sizeInstruct)++] = GetAdressLabel(                   \
-                                                            lbs, MAX_LABEL_COUNT, strArg);  \
+                                                            lbs, lableCount, strArg);       \
                         }                                                                   \
                                                                                             \
                         else                                                                \
@@ -144,20 +194,12 @@ int * GetInstuction(const char * buf, const int nLine, int * sizeInstruct)
                         }                                                                   \
                                                                                             \
                         i += strlen(strArg) + 1;                                            \
-                                                                                            \
                     }                                                                       \
                 }                                                                           \
                                                                                             \
                 else                                                                        \
                     instruct[(*sizeInstruct)++] = num;                                      \
             }                                                                               \
-
-            if(IsLabel(command))
-            {
-                strcpy(lbs[LABEL_COUNT].lbsName, command);
-                lbs[LABEL_COUNT].lbsAdress = *sizeInstruct;
-                LABEL_COUNT++;
-            }
 
         #include "Command.h"
         #undef DEF_CMD
@@ -168,6 +210,9 @@ int * GetInstuction(const char * buf, const int nLine, int * sizeInstruct)
 
 void WriteBytecode(const int * instruct, const int sizeInstruct)
 {
+    assert(instruct != NULL);
+    assert(sizeInstruct > 0);
+
     const char * nameFile = "Bytecode.bin";
     FILE * fp = fopen(nameFile, "wb");
 
