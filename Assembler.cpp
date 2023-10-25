@@ -24,7 +24,7 @@ label * GetLabels(const char * buf, int * lableCount);
 
 int main()
 {
-    const char * nameFile  = "ASM2.txt";
+    const char * nameFile  = "ASM4.txt";
     FILE * fp = fopen(nameFile, "rb");
 
     if(fp == NULL)
@@ -101,6 +101,8 @@ label * GetLabels(const char * buf, int * lableCount)
 
     for(int i = 0; sscanf(buf + i, "%s",  command) != EOF; i += 2)
     {
+        i += strlen(command);
+
         if(IsLabel(command))
         {
             strcpy(lbs[*lableCount].lbsName, command);
@@ -159,6 +161,7 @@ int * GetInstuction(const char * buf, const int nLine, int * sizeInstruct,
     for(int i = 0; sscanf(buf + i, "%s",  command) != EOF; i += 2)
     {
         i += strlen(command);
+
         #define DEF_CMD(name, num, args, code)                                              \
             if(!strcmp(command, #name))                                                     \
             {                                                                               \

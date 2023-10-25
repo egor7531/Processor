@@ -177,3 +177,20 @@ DEF_CMD(JNE, 25, 1,
         DEF_INDEX++;
 })
 
+DEF_CMD(CALL, 17, 1,
+{
+    DEF_PUSH(DEF_INDEX + 1);
+
+    DEF_INDEX = *(DEF_INSTR + (++DEF_INDEX)) - 1;
+})
+
+DEF_CMD(RET, 18, 0,
+{
+    int value = 0;
+
+    DEF_POP(value);
+
+    DEF_INDEX = value;
+})
+
+
