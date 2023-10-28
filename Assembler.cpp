@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 
 #include "Commons.h"
 #include "File.h"
@@ -14,17 +15,21 @@ struct label
     char lbsName[labelLenght];
 };
 
-int GetNumReg(const char * strReg);
-bool IsLabel(const char * command);
+bool IsLabel(const char * str);
+bool IsNumber(const char * str);
+bool IsRam(const char * str);
+bool IsRegister(const char * str);
 int GetAdressLabel(const label * lbs, const int lableCount, const char * strArg);
+int GetNumReg(const char * strReg);
+void GetArgRam(char * strArgRam, const char * strArg);
 void WriteBytecode(const int * instruct, const int sizeInstruct);
 int * GetInstuction(const char * buf, const int nLine, int * sizeInstruct,
-                                                     const label * lbs, const int lableCount);                                                                \
+                                    const label * lbs, const int lableCount);
 label * GetLabels(const char * buf, int * lableCount);
 
 int main()
 {
-    const char * nameFile  = "ASM4.txt";
+    const char * nameFile  = "ASM1.txt";
     FILE * fp = fopen(nameFile, "rb");
 
     if(fp == NULL)
@@ -66,6 +71,19 @@ int GetNumReg(const char * strReg)
     }
 }
 
+void GetArgRam(char * strArgRam, const char * strArg)
+{
+    assert(strArg    != NULL);
+    assert(strArgRam != NULL);
+
+    int j = 0;
+
+    for(int i = 1; strArg[i] != ']'; i++)
+        strArgRam[j++] = strArg[i];
+
+    strArgRam[j] = '\0';
+}
+
 int GetAdressLabel(const label * lbs, const int lableCount, const char * strArg)
 {
     assert(lbs    != NULL);
@@ -79,11 +97,65 @@ int GetAdressLabel(const label * lbs, const int lableCount, const char * strArg)
     }
 }
 
-bool IsLabel(const char * command)
+bool IsRegister(const char * str)
 {
-    assert(command != NULL);
+    assert(str != NULL);
 
-    return command[0] == ':';
+    bool isletter = true;
+
+    for(int i = 0; str[i] != '\0'; i++)
+    {
+        if(!isalpha(str[i]))
+        {
+            isletter = false;
+            break;
+        }
+    }
+
+    return isletter;
+}
+
+bool IsLabel(const char * str)
+{
+    assert(str != NULL);
+
+    bool isletter = true;
+
+    for(int i = 1;  str[i] != '\0'; i++)
+    {
+        if(!isalpha(str[i]))
+        {
+            isletter = false;
+            break;
+        }
+    }
+
+    return str[0] == ':' && isletter;
+}
+
+bool IsNumber(const char * str)
+{
+    assert(str != NULL);
+
+    bool isnum = true;
+
+    for(int i = 0; str[i] != '\0'; i++)
+    {
+        if(!isdigit(str[i]))
+        {
+            isnum = false;
+            break;
+        }
+    }
+
+    return isnum;
+}
+
+bool IsRam(const char * str)
+{
+    assert(str != NULL);
+
+    return str[0] == '[' && str[strlen(str) - 1] == ']';
 }
 
 label * GetLabels(const char * buf, int * lableCount)
@@ -117,18 +189,12 @@ label * GetLabels(const char * buf, int * lableCount)
                 if(args)                                                                    \
                 {                                                                           \
                     countInstruct++;                                                        \
-                    int valueArg = 0;                                                       \
+                                                                                            \
                     const int maxSizeStrArg = 10;                                           \
                     char strArg[maxSizeStrArg] = {};                                        \
+                    sscanf(buf + i + 1, "%s", strArg);                                      \
                                                                                             \
-                    if(sscanf(buf + i + 1, "%d", &valueArg))                                \
-                    {                                                                       \
-                        char str[5] = {};                                                   \
-                        i += strlen(itoa(valueArg, str, 10)) + 1;                           \
-                    }                                                                       \
-                                                                                            \
-                    else if(sscanf(buf + i + 1, "%s", strArg))                              \
-                        i += strlen(strArg) + 1;                                            \
+                    i += strlen(strArg) + 1;                                                \
                 }                                                                           \
             }                                                                               \
 
@@ -140,7 +206,7 @@ label * GetLabels(const char * buf, int * lableCount)
 }
 
 int * GetInstuction(const char * buf, const int nLine, int * sizeInstruct,
-                                                     const label * lbs, const int lableCount)
+                                    const label * lbs, const int lableCount)
 {
     assert(buf          != NULL);
     assert(lbs          != NULL);
@@ -167,36 +233,47 @@ int * GetInstuction(const char * buf, const int nLine, int * sizeInstruct,
             {                                                                               \
                 if(args)                                                                    \
                 {                                                                           \
-                    int valueArg = 0;                                                       \
                     const int maxSizeStrArg = 10;                                           \
                     char strArg[maxSizeStrArg] = {};                                        \
+                    sscanf(buf + i + 1, "%s", strArg);                                      \
                                                                                             \
-                    if(sscanf(buf + i + 1, "%d", &valueArg))                                \
+                    i += strlen(strArg) + 1;                                                \
+                                                                                            \
+                    if(IsRam(strArg))                                                       \
                     {                                                                       \
-                        instruct[(*sizeInstruct)++] = num | IMM;                            \
+                        char strArgRam[maxSizeStrArg] = {};                                 \
+                        GetArgRam(strArgRam, strArg);                                       \
                                                                                             \
-                        char str[5] = {};                                                   \
-                        i += strlen(itoa(valueArg, str, 10)) + 1;                           \
+                        if(IsNumber(strArgRam))                                             \
+                        {                                                                   \
+                            instruct[(*sizeInstruct)++] = num | RAM | IMM;                  \
+                            instruct[(*sizeInstruct)++] = atoi(strArgRam);                  \
+                        }                                                                   \
                                                                                             \
-                        instruct[(*sizeInstruct)++] = valueArg;                             \
+                        else if(IsRegister(strArgRam))                                      \
+                        {                                                                   \
+                            instruct[(*sizeInstruct)++] = num | RAM | REG;                  \
+                            instruct[(*sizeInstruct)++] = GetNumReg(strArgRam);             \
+                        }                                                                   \
                     }                                                                       \
                                                                                             \
-                    else if(sscanf(buf + i + 1, "%s", strArg))                              \
+                    else if(IsNumber(strArg))                                               \
                     {                                                                       \
-                        if(IsLabel(strArg))                                                 \
-                        {                                                                   \
-                            instruct[(*sizeInstruct)++] = num | LAB;                        \
-                            instruct[(*sizeInstruct)++] = GetAdressLabel(                   \
+                        instruct[(*sizeInstruct)++] = num | IMM;                            \
+                        instruct[(*sizeInstruct)++] = atoi(strArg);                         \
+                    }                                                                       \
+                                                                                            \
+                    else if(IsLabel(strArg))                                                \
+                    {                                                                       \
+                        instruct[(*sizeInstruct)++] = num | LAB;                            \
+                        instruct[(*sizeInstruct)++] = GetAdressLabel(                       \
                                                             lbs, lableCount, strArg);       \
-                        }                                                                   \
+                    }                                                                       \
                                                                                             \
-                        else                                                                \
-                        {                                                                   \
-                            instruct[(*sizeInstruct)++] = num | REG;                        \
-                            instruct[(*sizeInstruct)++] = GetNumReg(strArg);                \
-                        }                                                                   \
-                                                                                            \
-                        i += strlen(strArg) + 1;                                            \
+                    else if(IsRegister(strArg))                                             \
+                    {                                                                       \
+                        instruct[(*sizeInstruct)++] = num | REG;                            \
+                        instruct[(*sizeInstruct)++] = GetNumReg(strArg);                    \
                     }                                                                       \
                 }                                                                           \
                                                                                             \
@@ -215,6 +292,9 @@ void WriteBytecode(const int * instruct, const int sizeInstruct)
 {
     assert(instruct != NULL);
     assert(sizeInstruct > 0);
+
+    //for(int i = 0; i < sizeInstruct; i++)
+    //    printf("%d\n",instruct[i]);
 
     const char * nameFile = "Bytecode.bin";
     FILE * fp = fopen(nameFile, "wb");
