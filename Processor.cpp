@@ -6,55 +6,57 @@
 #include "Stack.h"
 #include "StackDump.h"
 #include "File.h"
-#include "Commons.h"
+#include "Common.h"
 
-struct processor
+const int RAM_SIZE = 100;
+
+struct Processor
 {
-    int * ram;
-    int * registers;
-    int * instruct;
+    int ram[RAM_SIZE];
+    int registers[REGISTERS_COUNT];
+    int * instrs;
     myStack stk;
 };
 
-#define DEF_PUSH(arg) StackPush(&prc->stk, arg)
-#define DEF_POP(arg) StackPop(&prc->stk, &arg)
-#define DEF_INDEX i
-#define DEF_INSTR prc->instruct
-#define DEF_RAM prc->ram
-#define DEF_REG prc->registers
-
-void WriteRegisters(processor * prc);
-void WriteInstuction(processor * prc);
-void WriteRam(processor * prc);
-void ProcessorCtor(processor * prc);
-void ProcessorDtor(processor * prc);
-void ProcessorDump(processor * prc);
-void GetResult(processor * prc);
+void read_instuctions(Processor * prc);
+void processor_ctor(Processor * prc);
+void processor_dtor(Processor * prc);
+void processor_dump(Processor * prc);
+void run_processor(Processor * prc);
 
 int main()
 {
-    processor prc = {};
-    ProcessorCtor(&prc);
+    Processor prc = {};
+    processor_ctor(&prc);
 
-    GetResult(&prc);
+    run_processor(&prc);
 
-    ProcessorDtor(&prc);
+    processor_dtor(&prc);
 
     return 0;
 }
 
-void GetResult(processor * prc)
+void run_processor(Processor * prc)
 {
-    for(int i = 0; prc->instruct[i] != HLT; i++)
+    assert(prc != NULL);
+
+    for(int i = 0; prc->instrs[i] != hlt; i++)
     {
-        switch(prc->instruct[i] & CMD)
+        switch(prc->instrs[i] & CMD)
         {
+            #define PUSH(arg) StackPush(&prc->stk, arg)
+            #define POP(arg) StackPop(&prc->stk, &arg)
+            #define INDEX i
+            #define INSTR prc->instrs
+            #define RAMS prc->ram
+            #define REGS prc->registers
+
             #define DEF_CMD(name, num, args, code)      \
                 case num:                               \
                     code;                               \
                     break;                              \
 
-            #include "Command.h"
+            #include "Commands.h"
 
             #undef DEF_CMD
 
@@ -65,11 +67,11 @@ void GetResult(processor * prc)
             #undef DEF_INDEX
             #undef DEF_RAM
         }
-        //ProcessorDump(prc);
+        //processor_dump(prc);
     }
 }
 
-void WriteInstuction(processor * prc)
+void read_instuctions(Processor * prc)
 {
     assert(prc != NULL);
 
@@ -77,17 +79,23 @@ void WriteInstuction(processor * prc)
     FILE *fp = fopen(nameFile, "rb");
 
     if(fp == NULL)
+    {
         printf("Can't open file\n");
+        abort();
+    }
 
-    int fileSize = GetFileSize(fp);
-    int sizeInstruct = GetFileSize(fp) / sizeof(int);
+    int fileSize = get_file_size(fp);
+    int sizeInstrs = fileSize / sizeof(int);
 
-    prc->instruct = (int *)calloc(sizeInstruct, sizeof(int));
+    prc->instrs = (int *)calloc(sizeInstrs, sizeof(int));
 
-    if(prc->instruct == NULL)
+    if(prc->instrs == NULL)
+    {
         printf("Pointer on instructions is NULL\n");
+        abort();
+    }
 
-    if(fread(prc->instruct, sizeof(int), sizeInstruct, fp) != sizeInstruct)
+    if(fread(prc->instrs, sizeof(int), sizeInstrs, fp) != sizeInstrs)
     {
         if(feof(fp))
             printf("Premature end of file\n");
@@ -96,55 +104,31 @@ void WriteInstuction(processor * prc)
             printf("File read error\n");
     }
 
+    //for(int i = 0; i < sizeInstrs; i++)
+    //    printf("%d\n", prc->instrs[i]);
+
     fclose(fp);
 }
 
-void WriteRegisters(processor * prc)
+void processor_ctor(Processor * prc)
 {
     assert(prc != NULL);
 
-    prc->registers = (int *)calloc(REGISTERS_COUNT, sizeof(int));
-
-    if(prc->registers == NULL)
-        printf("Pointer on  registers in NULL\n");
-}
-
-void WriteRam(processor * prc)
-{
-    assert(prc != NULL);
-
-    prc->ram = (int *)calloc(RAM_SIZE, sizeof(int));
-
-    if(prc->ram == NULL)
-        printf("Pointer on ram in NULL\n");
-}
-
-void ProcessorCtor(processor * prc)
-{
-    assert(prc != NULL);
-
-    WriteRegisters(prc);
-    WriteInstuction(prc);
-    WriteRam(prc);
+    read_instuctions(prc);
     StackCtor(&prc->stk);
 }
 
-void ProcessorDtor(processor * prc)
+void processor_dtor(Processor * prc)
 {
     assert(prc != NULL);
 
-    free(prc->instruct);
-    free(prc->registers);
-    free(prc->ram);
-
-    prc->instruct = NULL;
-    prc->registers = NULL;
-    prc->ram = NULL;
+    free(prc->instrs);
+    prc->instrs = NULL;
 
     StackDtor(&prc->stk);
 }
 
-void ProcessorDump(processor * prc)
+void processor_dump(Processor * prc)
 {
     assert(prc != NULL);
     assert(&prc->stk != NULL);

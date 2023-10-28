@@ -5,7 +5,7 @@
 
 #include "File.h"
 
-int GetFileSize(FILE * fp)
+int get_file_size(FILE * fp)
 {
     struct stat st;
 
@@ -14,7 +14,7 @@ int GetFileSize(FILE * fp)
     return st.st_size;
 }
 
-void FileRead(char * buf, FILE * fp, const int fileSize)
+void file_read(char * buf, FILE * fp, const int fileSize)
 {
     if(fread(buf, sizeof(char), fileSize, fp) != fileSize)
     {
@@ -26,19 +26,35 @@ void FileRead(char * buf, FILE * fp, const int fileSize)
     }
 }
 
-char * GetFileContent(FILE * fp, const int fileSize)
+char * get_file_content(int * fileSize)
 {
-    char * buf = (char *)calloc(fileSize, sizeof(char));
+    const char * nameFile  = "ASM1.txt";
+    FILE * fp = fopen(nameFile, "rb");
+
+    if(fp == NULL)
+    {
+        printf("can't open file\n");
+        abort();
+    }
+
+    *fileSize = get_file_size(fp);
+
+    char * buf = (char *)calloc(*fileSize, sizeof(char));
 
     if(buf == NULL)
+    {
         printf("buf in NULL\n");
+        abort();
+    }
 
-    FileRead(buf, fp, fileSize);
+    file_read(buf, fp, *fileSize);
+
+    fclose(fp);
 
     return buf;
 }
 
-int GetCountLine(char * buf, const int fileSize)
+int get_count_line(char * buf, const int fileSize)
 {
     int nLine = 0;
 
@@ -51,7 +67,7 @@ int GetCountLine(char * buf, const int fileSize)
     return nLine;
 }
 
-char ** WriteArrayPointers(char * buf, const int fileSize, const int nLine)
+char ** write_array_pointers(char * buf, const int fileSize, const int nLine)
 {
     char ** text = (char **)calloc(nLine, sizeof(char*));
 
