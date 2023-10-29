@@ -137,14 +137,14 @@ DEF_CMD(jne, 25, 1,
 
 #undef COND_JUMP
 
-DEF_CMD(call, 17, 1,
+DEF_CMD(call, 18, 1,
 {
     PUSH(INDEX + 1);
 
     INDEX = INSTR[++INDEX] - 1;
 })
 
-DEF_CMD(ret, 18, 0,
+DEF_CMD(ret, 19, 0,
 {
     int value = 0;
 

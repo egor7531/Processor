@@ -7,7 +7,7 @@
 #include "Common.h"
 #include "File.h"
 
-const int MAXLABELLENGHT = 10;
+const int MAXLABELLENGHT = 25;
 const int MAXSIZEARG = 25;
 
 struct Label
@@ -16,6 +16,7 @@ struct Label
     char labelName[MAXLABELLENGHT];
 };
 
+bool empty_line(const char * buf, int ind);
 int skip_space(const char * buf, int ind);
 bool is_label(const char * str, const Label * lbs, const int labelCount);
 bool is_number(const char * str);
@@ -47,7 +48,7 @@ int main()
     int * instrs = get_instrs(buf, nLine, &sizeInstrs, lbs, labelCount);
 
     //for(int i = 0; i < sizeInstrs; i++)
-    //    printf("%d\n", instrs[i]);
+    //    printf("%d %d\n", i, instrs[i]);
 
     write_bytecode(instrs, sizeInstrs);
 
@@ -56,6 +57,17 @@ int main()
     free(lbs);
 
     return 0;
+}
+
+bool empty_line(const char * buf, int ind)
+{
+    assert(buf != NULL);
+    assert(ind >= 0);
+
+    if(buf[ind] == '\r' && buf[ind + 1] == '\n')
+        return true;
+
+    return false;
 }
 
 int skip_space(const char * buf, int ind)
@@ -157,7 +169,7 @@ bool is_number(const char * str)
 
     bool isnum = true;
 
-    for(int i = 0; str[i] != '\0' && str[i] != ']' && str[i] != ' '; i++)
+    for(int i = 1; str[i] != '\0' && str[i] != ']' && str[i] != ' '; i++)
     {
         if(!isdigit(str[i]))
         {
@@ -166,7 +178,7 @@ bool is_number(const char * str)
         }
     }
 
-    return isnum;
+    return isnum && (str[0] == '-' || isdigit(str[0]));
 }
 
 bool is_ram(char * str)
@@ -226,6 +238,12 @@ Label * get_labels(const char * buf, int * labelCount, const int nLine)
 
     for(int i = 0; i < nLine; i++)
     {
+        if(empty_line(buf, ind))
+        {
+            ind += 2;
+            continue;
+        }
+
         ind = skip_space(buf, ind);
 
         const int maxSizeCommand = 10;
@@ -238,6 +256,8 @@ Label * get_labels(const char * buf, int * labelCount, const int nLine)
         if(command[0] == ':')
             add_label(lbs, command, countInstrs, labelCount);
 
+        else
+        {
         #define DEF_CMD(name, num, args, code)                                              \
             if(!strcmp(command, #name))                                                     \
             {                                                                               \
@@ -254,8 +274,9 @@ Label * get_labels(const char * buf, int * labelCount, const int nLine)
 
         #include "Commands.h"
         #undef DEF_CMD
+        }
 
-        ind += 2;
+    ind += 2;
     }
 
     return lbs;
@@ -282,6 +303,12 @@ int * get_instrs(const char * buf, const int nLine, int * sizeInstrs,
 
     for(int i = 0; i < nLine; i++)
     {
+        if(empty_line(buf, ind))
+        {
+            ind += 2;
+            continue;
+        }
+
         const int maxSizeCommand = 10;
         char command[maxSizeCommand] = {};
         ind = skip_space(buf, ind);
@@ -338,7 +365,7 @@ int * get_instrs(const char * buf, const int nLine, int * sizeInstrs,
         #include "Commands.h"
         #undef DEF_CMD
 
-        ind += 2; //Because file in rb format ends with 2 characters '\r' and '\n'
+        ind += 2;
     }
 
     return instrs;
