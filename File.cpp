@@ -26,9 +26,8 @@ void file_read(char * buf, FILE * fp, const int fileSize)
     }
 }
 
-char * get_file_content(int * fileSize)
+char * get_file_content(const char * nameFile, int * fileSize)
 {
-    const char * nameFile  = "ASM1.txt";
     FILE * fp = fopen(nameFile, "rb");
 
     if(fp == NULL)

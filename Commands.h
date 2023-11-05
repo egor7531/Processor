@@ -54,6 +54,14 @@ DEF_CMD(out,  7,  0,
     printf("Answer: %d\n", value);
 })
 
+DEF_CMD(sqrt_, 30, 0,
+{
+    int value = 0;
+    POP(value);
+
+    PUSH(SQRT(value));
+})
+
 #define BINARY_OPERATION(sign)      \
     int value1 = 0;                 \
     int value2 = 0;                 \
@@ -63,7 +71,7 @@ DEF_CMD(out,  7,  0,
                                     \
     PUSH(value2 sign value1);       \
 
-DEF_CMD(dlv,  3,  0,
+DEF_CMD(div_,  3,  0,
 {
     BINARY_OPERATION(/);
 })

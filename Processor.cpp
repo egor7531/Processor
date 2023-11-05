@@ -2,13 +2,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 
 #include "Stack.h"
 #include "StackDump.h"
 #include "File.h"
 #include "Common.h"
 
-const int RAM_SIZE = 100;
+const int RAM_SIZE = 5;
 
 struct Processor
 {
@@ -42,6 +43,7 @@ void run_processor(Processor * prc)
 
     for(int i = 0; prc->instrs[i] != hlt; i++)
     {
+        //printf("\ncommand = %d\n", prc->instrs[i]);
         switch(prc->instrs[i] & CMD)
         {
             #define PUSH(arg) StackPush(&prc->stk, arg)
@@ -50,6 +52,7 @@ void run_processor(Processor * prc)
             #define INSTR prc->instrs
             #define RAMS prc->ram
             #define REGS prc->registers
+            #define SQRT(arg) sqrt(arg)
 
             #define DEF_CMD(name, num, args, code)      \
                 case num:                               \
@@ -60,12 +63,13 @@ void run_processor(Processor * prc)
 
             #undef DEF_CMD
 
-            #undef DEF_PUSH
-            #undef DEF_POP
-            #undef DEF_INSTR
-            #undef DEF_REG
-            #undef DEF_INDEX
-            #undef DEF_RAM
+            #undef PUSH
+            #undef POP
+            #undef INSTR
+            #undef REG
+            #undef INDEX
+            #undef RAM
+            #undef SQRT
         }
         //processor_dump(prc);
     }

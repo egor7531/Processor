@@ -3,44 +3,46 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "Commons.h"
+#include "Common.h"
 #include "File.h"
 
-int * WriteInstuction(FILE * fp, int * sizeInstruct);
-void FillDASM(const int * instruct, const int sizeInstruct);
+int * read_instuction(int * sizeInstrs);
+void fill_DASM(const int * instrs, const int sizeInstrs);
 
 int main()
 {
-    const char * nameFile = "Bytecode.bin";
-    FILE *fp = fopen(nameFile, "rb");
+    int sizeInstrs = 0;
+    int * instrs = read_instuction(&sizeInstrs);
 
-    if(fp == NULL)
-        printf("Can't open file\n");
+    fill_DASM(instrs, sizeInstrs);
 
-    int sizeInstruct = 0;
-
-    int * instruct = WriteInstuction(fp, &sizeInstruct);
-
-    FillDASM(instruct, sizeInstruct);
-
-    free(instruct);
+    free(instrs);
 
     return 0;
 }
 
-int * WriteInstuction(FILE * fp, int * sizeInstruct)
+int * read_instuction(int * sizeInstrs)
 {
-    assert(fp != NULL);
+    assert(sizeInstrs != NULL);
 
-    int fileSize = GetFileSize(fp);
-    *sizeInstruct = GetFileSize(fp) / sizeof(int);
+    const char * nameFile = "Bytecode.bin";
+    FILE *fp = fopen(nameFile, "rb");
 
-    int * instruct = (int *)calloc(*sizeInstruct, sizeof(int));
+    if(fp == NULL)
+    {
+        printf("Can't open file\n");
+        abort();
+    }
 
-    if(instruct == NULL)
+    int fileSize = get_file_size(fp);
+    *sizeInstrs = fileSize / sizeof(int);
+
+    int * instrs = (int *)calloc(*sizeInstrs, sizeof(int));
+
+    if(instrs == NULL)
         printf("Pointer on instructions is NULL\n");
 
-    if(fread(instruct, sizeof(int), *sizeInstruct, fp) != *sizeInstruct)
+    if(fread(instrs, sizeof(int), *sizeInstrs, fp) != *sizeInstrs)
     {
         if(feof(fp))
             printf("Premature end of file\n");
@@ -51,10 +53,10 @@ int * WriteInstuction(FILE * fp, int * sizeInstruct)
 
     fclose(fp);
 
-    return instruct;
+    return instrs;
 }
 
-void FillDASM(const int * instruct,const int sizeInstruct)
+void fill_DASM(const int * instruct,const int sizeInstruct)
 {
     assert(instruct != NULL);
     assert(sizeInstruct > 0);
@@ -63,7 +65,10 @@ void FillDASM(const int * instruct,const int sizeInstruct)
     FILE * fp = fopen(nameFile, "wb");
 
     if(fp == NULL)
+    {
         printf("Can't open file: %s\n", nameFile);
+        abort();
+    }
 
     for(int i = 0; i < sizeInstruct; i++)
     {
@@ -85,7 +90,7 @@ void FillDASM(const int * instruct,const int sizeInstruct)
                     fprintf(fp, "\n");                                          \
                     break;                                                      \
 
-            #include "Command.h"
+            #include "Commands.h"
             #undef DEF_CMD
         }
     }
