@@ -8,7 +8,6 @@
 int get_file_size(FILE * fp)
 {
     struct stat st;
-
     fstat(fileno(fp), &st);
 
     return st.st_size;
@@ -33,6 +32,7 @@ char * get_file_content(const char * nameFile, int * fileSize)
     if(fp == NULL)
     {
         printf("can't open file\n");
+        fclose(fp);
         abort();
     }
 

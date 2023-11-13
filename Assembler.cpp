@@ -7,6 +7,8 @@
 #include "Common.h"
 #include "File.h"
 
+//#define DEBUG
+
 const int MAX_SIZE_COMMAND = 15;
 const int MAX_LABEL_LENGHT = 50;
 const int MAX_SIZE_ARG = 50;
@@ -45,14 +47,19 @@ int main()
     int labelCount = 0;
     Label * lbs = get_labels(buf, &labelCount, nLine);
 
-    //for(int i = 0; i < labelCount; i++)
-    //    printf("%s %d\n", lbs[i].labelName, lbs[i].labelAddress);
+    #ifdef DEBUG
+    for(int i = 0; i < labelCount; i++)
+        printf("%s %d\n", lbs[i].labelName, lbs[i].labelAddress);
+    #endif
 
     int sizeInstrs = 0;
+
     int * instrs = get_instrs(buf, nLine, &sizeInstrs, lbs, labelCount);
 
-    //for(int i = 0; i < sizeInstrs; i++)
-    //    printf("%d %d\n", i, instrs[i]);
+    #ifdef DEBUG
+    for(int i = 0; i < sizeInstrs; i++)
+        printf("%d %d\n", i, instrs[i]);
+    #endif
 
     write_bytecode(instrs, sizeInstrs);
 
@@ -74,9 +81,9 @@ int get_reg_num(const char * strReg)
 {
     assert(strReg != NULL);
 
-    for(int i = 0; i < REGISTERS_COUNT; i++)
+    for(int i = 0; i < COUNT_REGISTERS; i++)
     {
-        if(!strcmp(strReg, REGS_NAME[i]))
+        if(!strcmp(strReg, NAME_REGS[i]))
             return i + 1;
     }
 
@@ -106,9 +113,9 @@ void get_arg(char * str, char ** buf)
 
 int get_label_address(const Label * lbs, const int labelCount, const char * strArg)
 {
-    assert(lbs        != NULL);
-    assert(strArg     != NULL);
-    assert(labelCount  >    0);
+    assert(lbs != NULL);
+    assert(strArg != NULL);
+    assert(labelCount > 0);
 
     for(int i = 0; i < labelCount; i++)
     {
@@ -123,9 +130,9 @@ bool is_register(const char * str)
 {
     assert(str != NULL);
 
-    for(int i = 0; i < REGISTERS_COUNT; i++)
+    for(int i = 0; i < COUNT_REGISTERS; i++)
     {
-        if(!strcmp(str, REGS_NAME[i]))
+        if(!strcmp(str, NAME_REGS[i]))
             return true;
     }
 
@@ -193,7 +200,7 @@ bool is_ram(char * str)
 
 void add_label(Label * lbs, const char * command, const int countInstrs, int * labelCount)
 {
-    assert(lbs     != NULL);
+    assert(lbs != NULL);
     assert(command != NULL);
     assert(countInstrs >= 0);
     assert(*labelCount >= 0);
@@ -205,7 +212,7 @@ void add_label(Label * lbs, const char * command, const int countInstrs, int * l
 
 Label * get_labels(char * buf, int * labelCount, const int nLine)
 {
-    assert(buf        != NULL);
+    assert(buf != NULL);
     assert(labelCount != NULL);
     assert(nLine > 0);
 
@@ -224,7 +231,8 @@ Label * get_labels(char * buf, int * labelCount, const int nLine)
     for(int i = 0; i < nLine; i++)
     {
         skip_space(&buf);
-        sscanf(buf, "%s", command);
+        if(sscanf(buf, "%s", command) == EOF)
+            break;
         buf += strlen(command);
         if(command[0] == ':')
             add_label(lbs, command, countInstrs, labelCount);
@@ -240,7 +248,8 @@ Label * get_labels(char * buf, int * labelCount, const int nLine)
                     char strArg[MAX_SIZE_ARG] = {};                                         \
                     get_arg(strArg, &buf);                                                  \
                 }                                                                           \
-            }                                                                               \
+                continue;                                                                   \
+            }
 
         #include "Commands.h"
         #undef DEF_CMD
@@ -251,12 +260,12 @@ Label * get_labels(char * buf, int * labelCount, const int nLine)
 }
 
 int * get_instrs(char * buf, const int nLine, int * sizeInstrs,
-                                        const Label * lbs, const int labelCount)
+                 const Label * lbs, const int labelCount)
 {
-    assert(buf          != NULL);
-    assert(lbs          != NULL);
-    assert(sizeInstrs   != NULL);
-    assert(nLine      >  0);
+    assert(buf != NULL);
+    assert(lbs != NULL);
+    assert(sizeInstrs != NULL);
+    assert(nLine > 0);
     assert(labelCount >= 0);
 
     int * instrs = (int *)calloc(2 * nLine, sizeof(int));
@@ -273,7 +282,8 @@ int * get_instrs(char * buf, const int nLine, int * sizeInstrs,
     for(int i = 0; i < nLine; i++)
     {
         skip_space(&buf);
-        sscanf(buf, "%s", command);
+        if(sscanf(buf, "%s", command) == EOF)
+            break;
         buf += strlen(command);
 
         #define DEF_CMD(name, num, args, code)                                              \
@@ -283,28 +293,28 @@ int * get_instrs(char * buf, const int nLine, int * sizeInstrs,
                                                                                             \
                 if(args)                                                                    \
                 {                                                                           \
-                    skip_space(&buf);                                                        \
+                    skip_space(&buf);                                                       \
                     char strArg[MAX_SIZE_ARG] = {};                                         \
-                    get_arg(strArg, &buf);                                                   \
+                    get_arg(strArg, &buf);                                                  \
                                                                                             \
                     if(is_ram(strArg))                                                      \
-                        numberCommand |= RAM;                                               \
+                        numberCommand |= BIT_FIELD_RAM;                                     \
                                                                                             \
                     if(is_number(strArg))                                                   \
                     {                                                                       \
-                        numberCommand |= IMM;                                               \
+                        numberCommand |= BIT_FIELD_IMM;                                     \
                         instrs[countInstrs + 1] = atoi(strArg);                             \
                     }                                                                       \
                                                                                             \
                     else if(is_register(strArg))                                            \
                     {                                                                       \
-                        numberCommand |= REG;                                               \
+                        numberCommand |= BIT_FIELD_REG;                                     \
                         instrs[countInstrs + 1] = get_reg_num(strArg);                      \
                     }                                                                       \
                                                                                             \
                     else if(is_label(strArg, lbs, labelCount))                              \
-                        instrs[countInstrs + 1] = get_label_address(lbs,                    \
-                                                                    labelCount, strArg);    \
+                        instrs[countInstrs + 1] =                                           \
+                                        get_label_address(lbs, labelCount, strArg);         \
                                                                                             \
                     else                                                                    \
                     {                                                                       \
@@ -315,7 +325,8 @@ int * get_instrs(char * buf, const int nLine, int * sizeInstrs,
                 }                                                                           \
                 instrs[countInstrs] = numberCommand;                                        \
                 countInstrs += args + 1;                                                    \
-            }                                                                               \
+                continue;                                                                   \
+            }
 
         #include "Commands.h"
         #undef DEF_CMD
@@ -330,12 +341,12 @@ void write_bytecode(const int * instrs, const int sizeInstrs)
     assert(instrs != NULL);
     assert(sizeInstrs > 0);
 
-    const char * nameFile = "Bytecode.bin";
-    FILE * fp = fopen(nameFile, "wb");
+    FILE * fp = fopen(nameBinaryFile, "wb");
 
     if(fp == NULL)
     {
-        printf("Error work of File %s: \n", nameFile);
+        printf("Error work of File %s: \n", nameBinaryFile);
+        fclose(fp);
         abort();
     }
 

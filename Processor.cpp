@@ -9,12 +9,13 @@
 #include "File.h"
 #include "Common.h"
 
-const int RAM_SIZE = 5;
+const double PI = 3.1415926535;
+const int RAM_SIZE = 11 * 11;
 
 struct Processor
 {
     int ram[RAM_SIZE];
-    int registers[REGISTERS_COUNT];
+    int registers[COUNT_REGISTERS];
     int * instrs;
     myStack stk;
 };
@@ -24,6 +25,7 @@ void processor_ctor(Processor * prc);
 void processor_dtor(Processor * prc);
 void processor_dump(Processor * prc);
 void run_processor(Processor * prc);
+void print_ram(Processor * prc);
 
 int main()
 {
@@ -32,7 +34,7 @@ int main()
 
     run_processor(&prc);
 
-    processor_dtor(&prc);
+    print_ram(&prc);
 
     return 0;
 }
@@ -44,7 +46,7 @@ void run_processor(Processor * prc)
     for(int i = 0; prc->instrs[i] != hlt; i++)
     {
         //printf("\ncommand = %d\n", prc->instrs[i]);
-        switch(prc->instrs[i] & CMD)
+        switch(prc->instrs[i] & BIT_FIELD_CMD)
         {
             #define PUSH(arg) StackPush(&prc->stk, arg)
             #define POP(arg) StackPop(&prc->stk, &arg)
@@ -53,6 +55,8 @@ void run_processor(Processor * prc)
             #define RAMS prc->ram
             #define REGS prc->registers
             #define SQRT(arg) sqrt(arg)
+            #define SIN(arg) sin(arg)
+            #define COS(arg) cos(arg)
 
             #define DEF_CMD(name, num, args, code)      \
                 case num:                               \
@@ -70,6 +74,8 @@ void run_processor(Processor * prc)
             #undef INDEX
             #undef RAM
             #undef SQRT
+            #undef SIN
+            #undef COS
         }
         //processor_dump(prc);
     }
@@ -79,8 +85,7 @@ void read_instuctions(Processor * prc)
 {
     assert(prc != NULL);
 
-    const char * nameFile = "Bytecode.bin";
-    FILE *fp = fopen(nameFile, "rb");
+    FILE *fp = fopen(nameBinaryFile, "rb");
 
     if(fp == NULL)
     {
@@ -143,7 +148,7 @@ void processor_dump(Processor * prc)
     STACK_DUMP(&prc->stk, err);
 
     printf("Registers:\n");
-    for(int i = 0; i < REGISTERS_COUNT; i++)
+    for(int i = 0; i < COUNT_REGISTERS; i++)
         printf("%d ",  prc->registers[i]);
 
     printf("\nRAM:\n");
@@ -151,4 +156,34 @@ void processor_dump(Processor * prc)
         printf("%d ",  prc->ram[i]);
 
     printf("\n");
+}
+
+void print_ram(Processor * prc)
+{
+    assert(prc != NULL);
+
+    const char * nameFile = "Result.txt";
+    FILE * fp = fopen("Result.txt", "wb");
+
+    if(fp == NULL)
+    {
+        printf("Can't open file: %s\n", nameFile);
+        abort();
+    }
+
+    int N = sqrt(RAM_SIZE);
+
+    for(int i = 0; i < N; i++)
+    {
+        for(int j = 0; j < N; j++)
+        {
+            if(prc->ram[i * N + j] != 0)
+                fprintf(fp, " *");
+            else
+                fprintf(fp, "  ");
+        }
+        fprintf(fp, "\n");
+    }
+
+    fclose(fp);
 }

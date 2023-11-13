@@ -25,12 +25,12 @@ int * read_instuction(int * sizeInstrs)
 {
     assert(sizeInstrs != NULL);
 
-    const char * nameFile = "Bytecode.bin";
-    FILE *fp = fopen(nameFile, "rb");
+    FILE *fp = fopen(nameBinaryFile, "rb");
 
     if(fp == NULL)
     {
         printf("Can't open file\n");
+        fclose(fp);
         abort();
     }
 
@@ -56,10 +56,10 @@ int * read_instuction(int * sizeInstrs)
     return instrs;
 }
 
-void fill_DASM(const int * instruct,const int sizeInstruct)
+void fill_DASM(const int * instrs,const int sizeInstrs)
 {
-    assert(instruct != NULL);
-    assert(sizeInstruct > 0);
+    assert(instrs != NULL);
+    assert(sizeInstrs > 0);
 
     const char * nameFile = "DASM.txt";
     FILE * fp = fopen(nameFile, "wb");
@@ -67,28 +67,40 @@ void fill_DASM(const int * instruct,const int sizeInstruct)
     if(fp == NULL)
     {
         printf("Can't open file: %s\n", nameFile);
+        fclose(fp);
         abort();
     }
 
-    for(int i = 0; i < sizeInstruct; i++)
+    for(int i = 0; i < sizeInstrs; i++)
     {
-        switch(instruct[i] & CMD)
+        switch(instrs[i] & BIT_FIELD_CMD)
         {
-            #define DEF_CMD(name, num, args, code)                              \
-                case num:                                                       \
-                    fprintf(fp, #name);                                         \
-                                                                                \
-                    if(args)                                                    \
-                    {                                                           \
-                        if(instruct[i] & IMM)                                   \
-                            fprintf(fp, " %d", instruct[++i]);                  \
-                                                                                \
-                        else if(instruct[i] & REG)                              \
-                            fprintf(fp, " %s", REGS_NAME[instruct[++i] - 1]);   \
-                    }                                                           \
-                                                                                \
-                    fprintf(fp, "\n");                                          \
-                    break;                                                      \
+            #define DEF_CMD(name, num, args, code)                                  \
+                case num:                                                           \
+                    fprintf(fp, #name);                                             \
+                                                                                    \
+                    if(args)                                                        \
+                    {                                                               \
+                        if(instrs[i] & BIT_FIELD_RAM)                               \
+                        {                                                           \
+                            if(instrs[i] & BIT_FIELD_IMM)                           \
+                                fprintf(fp, " [%d]", instrs[++i]);                  \
+                                                                                    \
+                            else if(instrs[i] & BIT_FIELD_REG)                      \
+                                fprintf(fp, " [%s]", NAME_REGS[instrs[++i] - 1]);   \
+                        }                                                           \
+                                                                                    \
+                        else if(instrs[i] & BIT_FIELD_IMM)                          \
+                            fprintf(fp, " %d", instrs[++i]);                        \
+                                                                                    \
+                        else if(instrs[i] & BIT_FIELD_REG)                          \
+                            fprintf(fp, " %s", NAME_REGS[instrs[++i] - 1]);         \
+                                                                                    \
+                        else{ i++;                                                  \
+                            fprintf(fp, " :func");}                                 \
+                    }                                                               \
+                    fprintf(fp, "\n");                                              \
+                   break;
 
             #include "Commands.h"
             #undef DEF_CMD
