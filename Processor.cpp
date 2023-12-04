@@ -9,21 +9,29 @@
 #include "File.h"
 #include "Common.h"
 
-const double PI = 3.1415926535;
 const int RAM_SIZE = 11 * 11;
+
+enum PRC_ERRORS
+{
+    INSTRS_IS_NULL      = 1 << 1,
+    FP_IS_NULL          = 1 << 2,
+    ERROR_OF_READ_FILE  = 1 << 3,
+};
 
 struct Processor
 {
     int ram[RAM_SIZE];
     int registers[COUNT_REGISTERS];
     int * instrs;
-    myStack stk;
+    Stack stk;
+    int errors;
 };
 
-void read_instuctions(Processor * prc);
+void processor_print_errors(const int err);
+void get_instuctions(Processor * prc);
 void processor_ctor(Processor * prc);
 void processor_dtor(Processor * prc);
-void processor_dump(Processor * prc);
+//void processor_dump(Processor * prc);
 void run_processor(Processor * prc);
 void print_ram(Processor * prc);
 
@@ -36,6 +44,7 @@ int main()
 
     print_ram(&prc);
 
+    processor_dtor(&prc);
     return 0;
 }
 
@@ -48,8 +57,8 @@ void run_processor(Processor * prc)
         //printf("\ncommand = %d\n", prc->instrs[i]);
         switch(prc->instrs[i] & BIT_FIELD_CMD)
         {
-            #define PUSH(arg) StackPush(&prc->stk, arg)
-            #define POP(arg) StackPop(&prc->stk, &arg)
+            #define PUSH(arg) stack_push(&prc->stk, arg)
+            #define POP(arg) stack_pop(&prc->stk, &arg)
             #define INDEX i
             #define INSTR prc->instrs
             #define RAMS prc->ram
@@ -61,7 +70,7 @@ void run_processor(Processor * prc)
             #define DEF_CMD(name, num, args, code)      \
                 case num:                               \
                     code;                               \
-                    break;                              \
+                    break;
 
             #include "Commands.h"
 
@@ -81,36 +90,50 @@ void run_processor(Processor * prc)
     }
 }
 
-void read_instuctions(Processor * prc)
+void processor_print_errors(const int err)
+{
+    assert(err > 0);
+
+    printf("status error: ");
+    if(err & INSTRS_IS_NULL)
+        printf("pointer on instructions is null\n");
+    if(err & FP_IS_NULL)
+        printf("pointer on file is null\n");
+    if(err & ERROR_OF_READ_FILE)
+        printf("error when reading file\n");
+}
+
+void get_instuctions(Processor * prc)
 {
     assert(prc != NULL);
 
     FILE *fp = fopen(nameBinaryFile, "rb");
-
     if(fp == NULL)
     {
-        printf("Can't open file\n");
-        abort();
+        prc->errors |= FP_IS_NULL;
+        processor_print_errors(prc->errors);
+        processor_dtor(prc);
+        return;
     }
 
     int fileSize = get_file_size(fp);
     int sizeInstrs = fileSize / sizeof(int);
 
     prc->instrs = (int *)calloc(sizeInstrs, sizeof(int));
-
     if(prc->instrs == NULL)
     {
-        printf("Pointer on instructions is NULL\n");
-        abort();
+        prc->errors |= INSTRS_IS_NULL;
+        processor_print_errors(prc->errors);
+        processor_dtor(prc);
+        return;
     }
 
     if(fread(prc->instrs, sizeof(int), sizeInstrs, fp) != sizeInstrs)
     {
-        if(feof(fp))
-            printf("Premature end of file\n");
-
-        else
-            printf("File read error\n");
+        prc->errors |= ERROR_OF_READ_FILE;
+        processor_print_errors(prc->errors);
+        processor_dtor(prc);
+        return;
     }
 
     //for(int i = 0; i < sizeInstrs; i++)
@@ -123,29 +146,25 @@ void processor_ctor(Processor * prc)
 {
     assert(prc != NULL);
 
-    read_instuctions(prc);
-    StackCtor(&prc->stk);
+    get_instuctions(prc);
+    stack_ctor(&prc->stk);
 }
 
 void processor_dtor(Processor * prc)
 {
-    assert(prc != NULL);
-
     free(prc->instrs);
+    stack_dtor(&prc->stk);
     prc->instrs = NULL;
-
-    StackDtor(&prc->stk);
 }
 
-void processor_dump(Processor * prc)
+/*void processor_dump(Processor * prc)
 {
     assert(prc != NULL);
     assert(&prc->stk != NULL);
     assert(prc->registers != NULL);
     assert(prc->ram != NULL);
 
-    int err = 0;
-    STACK_DUMP(&prc->stk, err);
+    STACK_DUMP(&prc->stk);
 
     printf("Registers:\n");
     for(int i = 0; i < COUNT_REGISTERS; i++)
@@ -156,7 +175,7 @@ void processor_dump(Processor * prc)
         printf("%d ",  prc->ram[i]);
 
     printf("\n");
-}
+}*/
 
 void print_ram(Processor * prc)
 {
@@ -167,8 +186,10 @@ void print_ram(Processor * prc)
 
     if(fp == NULL)
     {
-        printf("Can't open file: %s\n", nameFile);
-        abort();
+        prc->errors |= FP_IS_NULL;
+        processor_print_errors(prc->errors);
+        processor_dtor(prc);
+        return;
     }
 
     int N = sqrt(RAM_SIZE);
@@ -177,8 +198,8 @@ void print_ram(Processor * prc)
     {
         for(int j = 0; j < N; j++)
         {
-            if(prc->ram[i * N + j] != 0)
-                fprintf(fp, " *");
+            if(prc->ram[i * N + j])
+                fprintf(fp, " .");
             else
                 fprintf(fp, "  ");
         }

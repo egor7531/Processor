@@ -1,28 +1,36 @@
 #ifndef COMMONS_H_INCLUDED
 #define COMMONS_H_INCLUDED
 
-const int CMD = 0b11111;
-const int IMM = 1 << 5;
-const int REG = 1 << 6;
-const int RAM = 1 << 7;
+const int BIT_FIELD_CMD = 0b11111;
+const int BIT_FIELD_IMM = 1 << 5;
+const int BIT_FIELD_REG = 1 << 6;
+const int BIT_FIELD_RAM = 1 << 7;
 
-static_assert( !(IMM & REG), "IMM and REG overlap");
-static_assert( !(IMM & CMD), "IMM and CMD overlap");
-static_assert( !(REG & CMD), "REG and CMD overlap");
-static_assert( !(RAM & CMD), "RAM and CMD overlap");
-static_assert( !(RAM & REG), "RAM and REG overlap");
-static_assert( !(RAM & IMM), "RAM and IMM overlap");
+static_assert( !(BIT_FIELD_IMM & BIT_FIELD_REG), "IMM and REG overlap");
+static_assert( !(BIT_FIELD_IMM & BIT_FIELD_CMD), "IMM and CMD overlap");
+static_assert( !(BIT_FIELD_REG & BIT_FIELD_CMD), "REG and CMD overlap");
+static_assert( !(BIT_FIELD_RAM & BIT_FIELD_CMD), "RAM and CMD overlap");
+static_assert( !(BIT_FIELD_RAM & BIT_FIELD_REG), "RAM and REG overlap");
+static_assert( !(BIT_FIELD_RAM & BIT_FIELD_IMM), "RAM and IMM overlap");
 
-const char *REGS_NAME[] =
+const int MAX_LABEL_LENGHT = 50;
+struct Label
+{
+    int labelAddress;
+    char labelName[MAX_LABEL_LENGHT];
+};
+
+const char *NAME_REGS[] =
 {
     "rax", "rbx", "rcx", "rdx", "rsi", "rdi", "rbp", "rsp",
     "r08", "r09", "r10", "r11", "r12", "r13", "r14", "r15"
 };
 
-const int REGISTERS_COUNT = sizeof(REGS_NAME) / sizeof(REGS_NAME[0]);
+const int COUNT_REGISTERS = sizeof(NAME_REGS) / sizeof(NAME_REGS[0]);
+const char *nameBinaryFile = "Bytecode.bin";
 
 #define DEF_CMD(name, num, args, code)    \
-    name = num,                           \
+    name = num,
 
 enum opcode_t
 {

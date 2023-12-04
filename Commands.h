@@ -1,18 +1,18 @@
 DEF_CMD(push, 1,  1,
 {
-    if(INSTR[INDEX] & RAM)
+    if(INSTR[INDEX] & BIT_FIELD_RAM)
     {
-        if(INSTR[INDEX] & REG)
+        if(INSTR[INDEX] & BIT_FIELD_REG)
             PUSH(RAMS[REGS[INSTR[++INDEX] - 1]]);
 
-        else if(INSTR[INDEX] & IMM)
+        else if(INSTR[INDEX] & BIT_FIELD_IMM)
             PUSH(RAMS[INSTR[++INDEX] - 1]);
     }
 
-    else if(INSTR[INDEX] & REG)
+    else if(INSTR[INDEX] & BIT_FIELD_REG)
         PUSH(REGS[INSTR[++INDEX] - 1]);
 
-    else if(INSTR[INDEX] & IMM)
+    else if(INSTR[INDEX] & BIT_FIELD_IMM)
         PUSH(INSTR[++INDEX]);
 })
 
@@ -22,16 +22,16 @@ DEF_CMD(pop,  11, 1,
 
     POP(value);
 
-    if(INSTR[INDEX] & RAM)
+    if(INSTR[INDEX] & BIT_FIELD_RAM)
     {
-        if(INSTR[INDEX] & REG)
+        if(INSTR[INDEX] & BIT_FIELD_REG)
             RAMS[REGS[INSTR[++INDEX] - 1]] = value;
 
-        else if(INSTR[INDEX] & IMM)
+        else if(INSTR[INDEX] & BIT_FIELD_IMM)
             RAMS[INSTR[++INDEX] - 1] = value;
     }
 
-    else if(INSTR[INDEX] & REG)
+    else if(INSTR[INDEX] & BIT_FIELD_REG)
         REGS[INSTR[++INDEX] - 1] = value;
 })
 
@@ -62,6 +62,24 @@ DEF_CMD(sqrt_, 30, 0,
     PUSH(SQRT(value));
 })
 
+DEF_CMD(sin_, 27, 0,
+{
+    int value = 0;
+    POP(value);
+
+    value = -5 * SIN(M_PI / 180 * value);
+    PUSH(value);
+})
+
+DEF_CMD(cos_, 28, 0,
+{
+    int value = 0;
+    POP(value);
+
+    value = 5 * COS(M_PI / 180 * value);
+    PUSH(value);
+})
+
 #define BINARY_OPERATION(sign)      \
     int value1 = 0;                 \
     int value2 = 0;                 \
@@ -79,7 +97,6 @@ DEF_CMD(div_,  3,  0,
 DEF_CMD(sub,  4,  0,
 {
     BINARY_OPERATION(-);
-
 })
 
 DEF_CMD(add,  5,  0,
@@ -96,7 +113,7 @@ DEF_CMD(mul,  6,  0,
 
 DEF_CMD(jump, 15, 1,
 {
-    INDEX = INSTR[++INDEX] - 1;
+    INDEX = INSTR[INDEX + 1] - 1;
 })
 
 #define COND_JUMP(sign)                             \
@@ -149,7 +166,7 @@ DEF_CMD(call, 18, 1,
 {
     PUSH(INDEX + 1);
 
-    INDEX = INSTR[++INDEX] - 1;
+    INDEX = INSTR[INDEX + 1] - 1;
 })
 
 DEF_CMD(ret, 19, 0,
