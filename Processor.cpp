@@ -28,6 +28,7 @@ struct Processor
 };
 
 void processor_print_errors(const int err);
+void prcocessor_process_errors(Processor *prc, const bool condition, const int err);
 void get_instuctions(Processor * prc);
 void processor_ctor(Processor * prc);
 void processor_dtor(Processor * prc);
@@ -103,38 +104,33 @@ void processor_print_errors(const int err)
         printf("error when reading file\n");
 }
 
+void prcocessor_process_errors(Processor *prc, const bool condition, const int err)
+{
+    assert(prc != NULL);
+    assert(err >= 0);
+
+    if(!condition)
+    {
+        processor_print_errors(err);
+        processor_dtor(prc);
+        abort();
+    }
+}
+
 void get_instuctions(Processor * prc)
 {
     assert(prc != NULL);
 
     FILE *fp = fopen(nameBinaryFile, "rb");
-    if(fp == NULL)
-    {
-        prc->errors |= FP_IS_NULL;
-        processor_print_errors(prc->errors);
-        processor_dtor(prc);
-        return;
-    }
+    prcocessor_process_errors(prc, fp != NULL, FP_IS_NULL);
 
     int fileSize = get_file_size(fp);
     int sizeInstrs = fileSize / sizeof(int);
 
     prc->instrs = (int *)calloc(sizeInstrs, sizeof(int));
-    if(prc->instrs == NULL)
-    {
-        prc->errors |= INSTRS_IS_NULL;
-        processor_print_errors(prc->errors);
-        processor_dtor(prc);
-        return;
-    }
-
-    if(fread(prc->instrs, sizeof(int), sizeInstrs, fp) != sizeInstrs)
-    {
-        prc->errors |= ERROR_OF_READ_FILE;
-        processor_print_errors(prc->errors);
-        processor_dtor(prc);
-        return;
-    }
+    prcocessor_process_errors(prc, prc->instrs != NULL, INSTRS_IS_NULL);
+    prcocessor_process_errors(prc,
+    fread(prc->instrs, sizeof(int), sizeInstrs, fp) == sizeInstrs, ERROR_OF_READ_FILE);
 
     //for(int i = 0; i < sizeInstrs; i++)
     //    printf("%d\n", prc->instrs[i]);
@@ -152,9 +148,10 @@ void processor_ctor(Processor * prc)
 
 void processor_dtor(Processor * prc)
 {
+    assert(prc != NULL);
+
     free(prc->instrs);
     stack_dtor(&prc->stk);
-    prc->instrs = NULL;
 }
 
 /*void processor_dump(Processor * prc)
@@ -183,14 +180,7 @@ void print_ram(Processor * prc)
 
     const char * nameFile = "Result.txt";
     FILE * fp = fopen("Result.txt", "wb");
-
-    if(fp == NULL)
-    {
-        prc->errors |= FP_IS_NULL;
-        processor_print_errors(prc->errors);
-        processor_dtor(prc);
-        return;
-    }
+    prcocessor_process_errors(prc, fp != NULL, FP_IS_NULL);
 
     int N = sqrt(RAM_SIZE);
 

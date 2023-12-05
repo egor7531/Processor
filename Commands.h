@@ -1,25 +1,21 @@
 DEF_CMD(push, 1,  1,
 {
-    if(INSTR[INDEX] & BIT_FIELD_RAM)
-    {
-        if(INSTR[INDEX] & BIT_FIELD_REG)
-            PUSH(RAMS[REGS[INSTR[++INDEX] - 1]]);
+    int value = 0;
 
-        else if(INSTR[INDEX] & BIT_FIELD_IMM)
-            PUSH(RAMS[INSTR[++INDEX] - 1]);
-    }
-
-    else if(INSTR[INDEX] & BIT_FIELD_REG)
-        PUSH(REGS[INSTR[++INDEX] - 1]);
-
+    if(INSTR[INDEX] & BIT_FIELD_REG)
+        value = REGS[INSTR[++INDEX] - 1];
     else if(INSTR[INDEX] & BIT_FIELD_IMM)
-        PUSH(INSTR[++INDEX]);
+        value = INSTR[++INDEX];
+
+    if(INSTR[INDEX] & BIT_FIELD_RAM)
+        value = RAMS[value];
+
+    PUSH(value);
 })
 
 DEF_CMD(pop,  11, 1,
 {
     int value = 0;
-
     POP(value);
 
     if(INSTR[INDEX] & BIT_FIELD_RAM)
@@ -172,7 +168,6 @@ DEF_CMD(call, 18, 1,
 DEF_CMD(ret, 19, 0,
 {
     int value = 0;
-
     POP(value);
 
     INDEX = value;

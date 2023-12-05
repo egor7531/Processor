@@ -34,6 +34,7 @@ void assembler_ctor(Assembler *asmr);
 void assembler_dtor(Assembler *asmr);
 //void assembler_dump(const Assembler *asmr);
 void assembler_print_errors(const int err, const int nLine);
+void assembler_process_errors(Assembler *asmr, const bool condition, const int err, const int nLine);
 
 void skip_space(char **buf);
 
@@ -65,15 +66,9 @@ void assembler_ctor(Assembler *asmr)
 {
     assert(asmr != NULL);
 
-    const char *nameFile  = "Square.txt";
+    const char *nameFile  = "ASM1.txt";
     asmr->buf = get_file_content(nameFile, &asmr->sizeBuf);
-    if(asmr->buf == NULL)
-    {
-        asmr->errors |= BUF_IS_NULL;
-        assembler_print_errors(asmr->errors, 0);
-        assembler_dtor(asmr);
-        return;
-    }
+    assembler_process_errors(asmr, asmr->buf != NULL, BUF_IS_NULL, 0);
 
     int nLine =  get_count_line(asmr->buf, asmr->sizeBuf);
     get_labels(asmr, nLine);
@@ -119,7 +114,7 @@ void assembler_dtor(Assembler *asmr)
 void assembler_print_errors(const int err, const int nLine)
 {
     assert(err > 0);
-    assert(nLine > 0);
+    assert(nLine >= 0);
 
     printf("status error: ");
     if(err & BUF_IS_NULL)
@@ -132,6 +127,20 @@ void assembler_print_errors(const int err, const int nLine)
         printf("bad syntax in line %d\n", nLine);
     if(err & FP_IS_NULL)
         printf("pointer on file is null\n");
+}
+
+void assembler_process_errors(Assembler *asmr, const bool condition, const int err, const int nLine)
+{
+    assert(asmr != NULL);
+    assert(err >= 0);
+    assert(nLine >= 0);
+
+    if(!condition)
+    {
+        assembler_print_errors(err, nLine);
+        assembler_dtor(asmr);
+        abort();
+    }
 }
 
 void skip_space(char **buf)
@@ -281,13 +290,7 @@ void get_labels(Assembler *asmr, const int nLine)
     assert(nLine > 0);
 
     asmr->labels = (Label *)calloc(nLine, sizeof(Label));
-    if(asmr->labels == NULL)
-    {
-        asmr->errors |= LABEL_IS_NULL;
-        assembler_print_errors(asmr->errors, 0);
-        assembler_dtor(asmr);
-        return;
-    }
+    assembler_process_errors(asmr, asmr->labels != NULL, LABEL_IS_NULL, 0);
 
     int numInstr = 0;
     char *bufCopy = asmr->buf;
@@ -329,13 +332,7 @@ void get_instrs(Assembler *asmr, const int nLine)
     assert(nLine > 0);
 
     asmr->instrs = (int *)calloc(2 * nLine, sizeof(int));
-    if(asmr->instrs == NULL)
-    {
-        asmr->errors |= INSTRS_IS_NULL;
-        assembler_print_errors(asmr->errors, 0);
-        assembler_dtor(asmr);
-        return;
-    }
+    assembler_process_errors(asmr, asmr->instrs != NULL, INSTRS_IS_NULL, 0);
 
     char command[MAX_SIZE_COMMAND] = {};
     int countInstrs = 0;
@@ -375,15 +372,10 @@ void get_instrs(Assembler *asmr, const int nLine)
                                                                                             \
                     else if(is_label(strArg, asmr->labels, asmr->sizeLabel))                \
                         asmr->instrs[countInstrs + 1] =                                     \
-                    get_label_address(asmr->labels, asmr->sizeLabel, strArg);               \
+                                get_label_address(asmr->labels, asmr->sizeLabel, strArg);   \
                                                                                             \
                     else                                                                    \
-                    {                                                                       \
-                        asmr->errors |= BAD_SYNTAX;                                         \
-                        assembler_print_errors(asmr->errors, i + 1);                        \
-                        assembler_dtor(asmr);                                               \
-                        return;                                                             \
-                    }                                                                       \
+                        assembler_process_errors(asmr, false, BAD_SYNTAX, i + 1);           \
                                                                                             \
                 }                                                                           \
                 asmr->instrs[countInstrs] = numberCommand;                                  \
@@ -395,12 +387,7 @@ void get_instrs(Assembler *asmr, const int nLine)
         #undef DEF_CMD
 
         if(!is_label(command, asmr->labels, asmr->sizeLabel))
-        {
-            asmr->errors |= BAD_SYNTAX;
-            assembler_print_errors(asmr->errors, i + 1);
-            assembler_dtor(asmr);
-            return;
-        }
+            assembler_process_errors(asmr, false, BAD_SYNTAX, i + 1);
     }
 
     asmr->sizeInstrs = countInstrs;
@@ -411,14 +398,7 @@ void write_bytecode(Assembler *asmr)
     assert(asmr != NULL);
 
     FILE * fp = fopen(nameBinaryFile, "wb");
-    if(fp == NULL)
-    {
-        fclose(fp);
-        asmr->errors |= FP_IS_NULL;
-        assembler_print_errors(asmr->errors, 0);
-        assembler_dtor(asmr);
-        return;
-    }
+    assembler_process_errors(asmr, fp != NULL, FP_IS_NULL, 0);
 
     fwrite(asmr->instrs, sizeof(int), asmr->sizeInstrs, fp);
     fclose(fp);

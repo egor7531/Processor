@@ -6,9 +6,6 @@
 #include "Common.h"
 #include "File.h"
 
-const int WAS_LABEL = -1;
-const char *LABEL = ":label";
-
 struct Disassembler
 {
     int sizeInstrs;
@@ -29,6 +26,7 @@ enum DASM_ERRORS
 void disassembler_ctor(Disassembler *dasm);
 void disassembler_dtor(Disassembler *dasm);
 void disassembler_print_errors(const int err);
+void disassembler_process_errors(Disassembler *dasm, const bool condition, const int err);
 
 void get_instuctions(Disassembler *dasm);
 void add_label(Disassembler *dasm, const int address);
@@ -61,11 +59,10 @@ void disassembler_ctor(Disassembler *dasm)
 
 void disassembler_dtor(Disassembler *dasm)
 {
+    assert(dasm != NULL);
+
     free(dasm->instrs);
     free(dasm->labels);
-
-    dasm->instrs = NULL;
-    dasm->labels = NULL;
 }
 
 void disassembler_print_errors(const int err)
@@ -83,6 +80,19 @@ void disassembler_print_errors(const int err)
         printf("error when reading file\n");
 }
 
+void disassembler_process_errors(Disassembler *dasm, const bool condition, const int err)
+{
+    assert(dasm != NULL);
+    assert(err >= 0);
+
+    if(!condition)
+    {
+        disassembler_print_errors(err);
+        disassembler_dtor(dasm);
+        abort();
+    }
+}
+
 void add_label(Disassembler *dasm, const int address)
 {
     assert(dasm != NULL);
@@ -95,7 +105,7 @@ void add_label(Disassembler *dasm, const int address)
     }
 
     char nameLabel[MAX_LABEL_LENGHT] = ":label";
-    snprintf(nameLabel + strlen(LABEL), MAX_LABEL_LENGHT, "%d", dasm->sizeLabels + 1);
+    snprintf(nameLabel + strlen(nameLabel), MAX_LABEL_LENGHT, "%d", dasm->sizeLabels + 1);
     strcpy(dasm->labels[dasm->sizeLabels].labelName, nameLabel);
     dasm->labels[dasm->sizeLabels].labelAddress = address;
     dasm->sizeLabels++;
@@ -106,13 +116,7 @@ void get_labels(Disassembler *dasm)
     assert(dasm != NULL);
 
     dasm->labels = (Label *)calloc(dasm->sizeInstrs / 2, sizeof(Label));
-    if(dasm->labels == NULL)
-    {
-        dasm->errors |= LABEL_IS_NULL;
-        disassembler_print_errors(dasm->errors);
-        disassembler_dtor(dasm);
-        return;
-    }
+    disassembler_process_errors(dasm, dasm->labels!= NULL, LABEL_IS_NULL);
 
     for(int i = 0; i < dasm->sizeInstrs; i++)
     {
@@ -139,33 +143,15 @@ void get_instuctions(Disassembler *dasm)
     assert(dasm != NULL);
 
     FILE *fp = fopen(nameBinaryFile, "rb");
-    if(fp == NULL)
-    {
-        dasm->errors |= FP_IS_NULL;
-        disassembler_print_errors(dasm->errors);
-        disassembler_dtor(dasm);
-        return;
-    }
+    disassembler_process_errors(dasm, fp != NULL, FP_IS_NULL);
 
     int fileSize = get_file_size(fp);
     dasm->sizeInstrs = fileSize / sizeof(int);
 
     dasm->instrs = (int *)calloc(dasm->sizeInstrs, sizeof(int));
-    if(dasm->instrs == NULL)
-    {
-        dasm->errors |= INSTRS_IS_NULL;
-        disassembler_print_errors(dasm->errors);
-        disassembler_dtor(dasm);
-        return;
-    }
-
-    if(fread(dasm->instrs, sizeof(int), dasm->sizeInstrs, fp) != dasm->sizeInstrs)
-    {
-        dasm->errors |= ERROR_OF_READ_FILE;
-        disassembler_print_errors(dasm->errors);
-        disassembler_dtor(dasm);
-        return;
-    }
+    disassembler_process_errors(dasm, dasm->instrs != NULL, INSTRS_IS_NULL);
+    disassembler_process_errors(dasm, fread(dasm->instrs, sizeof(int), dasm->sizeInstrs, fp)
+                                        == dasm->sizeInstrs, ERROR_OF_READ_FILE);
 
     fclose(fp);
 }
@@ -176,14 +162,7 @@ void write_DASM(Disassembler *dasm)
 
     const char * nameFile = "DASM.txt";
     FILE * fp = fopen(nameFile, "wb");
-
-    if(fp == NULL)
-    {
-        dasm->errors |= FP_IS_NULL;
-        disassembler_print_errors(dasm->errors);
-        disassembler_dtor(dasm);
-        return;
-    }
+    disassembler_process_errors(dasm, fp != NULL, FP_IS_NULL);
 
     for(int i = 0; i < dasm->sizeInstrs; i++)
     {
